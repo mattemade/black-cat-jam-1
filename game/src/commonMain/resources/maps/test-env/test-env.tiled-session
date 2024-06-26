@@ -1,0 +1,25 @@
+{
+    "Map/SizeTest": {
+        "height": 4300,
+        "width": 2
+    },
+    "activeFile": "",
+    "expandedProjectPaths": [
+    ],
+    "fileStates": {
+    },
+    "last.imagePath": "C:/Users/yufimtsev/dev/black-cat-game/game/src/commonMain/resources/maps/test-env",
+    "map.height": 34,
+    "map.lastUsedFormat": "json",
+    "map.width": 60,
+    "openFiles": [
+    ],
+    "project": "test-env.tiled-project",
+    "recentFiles": [
+    ],
+    "tileset.lastUsedFormat": "json",
+    "tileset.tileSize": {
+        "height": 1024,
+        "width": 1024
+    }
+}

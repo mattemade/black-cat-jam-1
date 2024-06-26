@@ -1,0 +1,3 @@
+3 frames like attack.%%.png
+1..3 for 160
+repeat 1

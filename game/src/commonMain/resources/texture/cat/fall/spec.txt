@@ -1,0 +1,5 @@
+3 frames like fall.%%.png
+1..2 for 80
+repeat 1
+3 for 100000
+repeat

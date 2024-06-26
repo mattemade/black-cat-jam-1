@@ -1,0 +1,4 @@
+2 frames like land.%%.png
+signal land
+1..2 for 160
+repeat 1

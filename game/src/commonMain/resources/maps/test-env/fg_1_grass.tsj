@@ -1,0 +1,14 @@
+{ "columns":1,
+ "image":"fg_1_grass.png",
+ "imageheight":1024,
+ "imagewidth":1024,
+ "margin":0,
+ "name":"fg_1_grass",
+ "spacing":0,
+ "tilecount":1,
+ "tiledversion":"1.10.2",
+ "tileheight":1024,
+ "tilewidth":1024,
+ "type":"tileset",
+ "version":"1.10"
+}

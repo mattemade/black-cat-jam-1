@@ -1,0 +1,6 @@
+3 frames like jump.%%.png
+signal jump
+1..2 for 80
+repeat 1
+3 for 100000
+repeat

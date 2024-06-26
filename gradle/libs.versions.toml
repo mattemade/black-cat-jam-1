@@ -1,0 +1,40 @@
+[versions]
+agp = "8.2.0"
+kotlin = "2.0.0"
+kotlinx-html = "0.9.1"
+kotlinx-coroutines = "1.8.0"
+littlekt = "0.9.0.16837cc-SNAPSHOT" # custom build
+#littlekt = "0.9.0"
+
+#little-kt core
+dependencyUpdates = "0.51.0"
+dokka = "1.9.20"
+kotlinx-atomicfu = "0.23.1"
+kotlinx-serialization = "1.6.2"
+lwjgl = "3.3.3"
+mp3-decoder = "1.0.1"
+
+[libraries]
+kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinx-coroutines" }
+kotlinx-html-js = { module = "org.jetbrains.kotlinx:kotlinx-html-js", version.ref = "kotlinx-html" }
+
+littlekt-core = { module = "com.lehaine.littlekt:core", version.ref = "littlekt" }
+
+#littlekt-core
+kotlinx-atomicfu = { module = "org.jetbrains.kotlinx:atomicfu", version.ref = "kotlinx-atomicfu" }
+kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinx-serialization" }
+lwjgl = { module = "org.lwjgl:lwjgl", version.ref = "lwjgl" }
+lwjgl-glfw = { module = "org.lwjgl:lwjgl-glfw", version.ref = "lwjgl" }
+lwjgl-opengl = { module = "org.lwjgl:lwjgl-opengl", version.ref = "lwjgl" }
+lwjgl-openal = { module = "org.lwjgl:lwjgl-openal", version.ref = "lwjgl" }
+mp3-decoder = { module = "fr.delthas:javamp3", version.ref = "mp3-decoder" }
+
+
+[plugins]
+android-application = { id = "com.android.application", version.ref = "agp" }
+kotlin-multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
+
+#littlekt-core
+dokka = { id = "org.jetbrains.dokka", version.ref = "dokka" }
+kotlinx-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
+dependencyUpdates = { id = "com.github.ben-manes.versions", version.ref = "dependencyUpdates" }

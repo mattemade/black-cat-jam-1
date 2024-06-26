@@ -1,0 +1,73 @@
+{
+    "Map/SizeTest": {
+        "height": 4300,
+        "width": 2
+    },
+    "activeFile": "",
+    "expandedProjectPaths": [
+        "."
+    ],
+    "fileStates": {
+        "Castle2.tsx": {
+            "scaleInDock": 1.5,
+            "scaleInEditor": 3
+        },
+        "caste-grounds.tmx": {
+            "expandedObjectLayers": [
+                4
+            ],
+            "scale": 8,
+            "selectedLayer": 3,
+            "viewCenter": {
+                "x": -321.875,
+                "y": -479.875
+            }
+        },
+        "castle-indoor.tmx": {
+            "expandedObjectLayers": [
+                2
+            ],
+            "scale": 8,
+            "selectedLayer": 1,
+            "viewCenter": {
+                "x": 48.5,
+                "y": 41
+            }
+        },
+        "isometric-map.tmx": {
+            "scale": 1.5,
+            "selectedLayer": 1,
+            "viewCenter": {
+                "x": 82.66666666666669,
+                "y": 12
+            }
+        },
+        "isometric-set.tsx": {
+            "dynamicWrapping": false,
+            "scaleInDock": 1,
+            "scaleInEditor": 1
+        }
+    },
+    "last.imagePath": "C:/Users/yufimtsev/dev/tiled-maps/isometric",
+    "map.fixedSize": false,
+    "map.height": 17,
+    "map.lastUsedFormat": "tmx",
+    "map.orientation": null,
+    "map.tileHeight": 32,
+    "map.tileWidth": 32,
+    "openFiles": [
+    ],
+    "project": "isometric-map.tiled-project",
+    "recentFiles": [
+        "isometric-set.tsx",
+        "isometric-map.tmx",
+        "Castle2.tsx",
+        "castle-indoor.tmx",
+        "caste-grounds.tmx"
+    ],
+    "tileset.lastUsedFormat": "tsx",
+    "tileset.tileSize": {
+        "height": 32,
+        "width": 32
+    }
+}
