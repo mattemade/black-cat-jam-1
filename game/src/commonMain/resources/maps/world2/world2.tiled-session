@@ -1,0 +1,27 @@
+{
+    "Map/SizeTest": {
+        "height": 4300,
+        "width": 2
+    },
+    "activeFile": "",
+    "expandedProjectPaths": [
+    ],
+    "fileStates": {
+    },
+    "last.imagePath": "C:/Users/yufimtsev/dev/black-cat-game/game/src/commonMain/resources/maps/world2",
+    "map.height": 60,
+    "map.lastUsedFormat": "json",
+    "map.tileHeight": 120,
+    "map.tileWidth": 120,
+    "map.width": 60,
+    "openFiles": [
+    ],
+    "project": "world2.tiled-project",
+    "recentFiles": [
+    ],
+    "tileset.lastUsedFormat": "json",
+    "tileset.tileSize": {
+        "height": 120,
+        "width": 120
+    }
+}

@@ -131,7 +131,7 @@ class Cat(
         } else {
             val seconds = dt.seconds
             timeMultiplier = (tempVec2.set(xMovement, yMovement).length() * 0.6f).toDouble()
-            body.position.addLocal(tempVec2.mul(seconds*6f))
+            body.position.addLocal(tempVec2.mulLocal(seconds*6f))
 
         }
         currentAnimation.update(dt * timeMultiplier)

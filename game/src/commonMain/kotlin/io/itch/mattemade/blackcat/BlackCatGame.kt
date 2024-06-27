@@ -5,8 +5,9 @@ import com.lehaine.littlekt.ContextListener
 import com.lehaine.littlekt.graph.node.resource.HAlign
 import com.lehaine.littlekt.graphics.Color
 import com.lehaine.littlekt.graphics.Fonts
-import com.lehaine.littlekt.graphics.Textures
 import com.lehaine.littlekt.graphics.g2d.SpriteBatch
+import com.lehaine.littlekt.graphics.g2d.tilemap.tiled.TiledObjectLayer
+import com.lehaine.littlekt.graphics.g2d.tilemap.tiled.TiledTilesLayer
 import com.lehaine.littlekt.graphics.g2d.use
 import com.lehaine.littlekt.graphics.gl.ClearBufferMask
 import com.lehaine.littlekt.graphics.toFloatBits
@@ -49,27 +50,49 @@ class BlackCatGame(context: Context) : ContextListener(context), Disposing by Se
     private var cameraOffsetX = 0f
     private var cameraOffsetY = 0f
 
-    private val cat by lazy { Cat(Vec2(-4f, -4f), world, assets.catAnimations, controller) }
-    private val world = World(gravity = Vec2(x = 0f, y = 40f)).registerAsContextDisposer(Body::class) {
-        destroyBody(it as Body)
-    }.apply {
-        setContactListener(ContactListener())
+    private val tempVec2 = Vec2()
+    private val manualParallaxOrigin = Vec2()
+    private val cat by lazy {
+        (assets.firstDay.layer("spawn") as? TiledObjectLayer)?.objects?.firstOrNull()?.let { spawnPlace ->
+            manualParallaxOrigin.set(
+                spawnPlace.x,
+                spawnPlace.y
+            ).mulLocal(1 / 120f)
+            Cat(manualParallaxOrigin, world, assets.catAnimations, controller)
+        } ?: error("no spawn on the map!")
     }
-    private val blocks = listOf(
-        Block(world, Rect(-10f, 0f, 30f, 1f)),
-        Block(world, Rect(-10f, -19f, 1f, 20f), friction = 0f),
-        Block(world, Rect(20f, -19f, 1f, 20f), friction = 0f),
-    )
 
-    private val platformWidth = 3f
-    private val platformGap = 1f
-    private val period = platformWidth + platformGap
-    private val diffList = listOf(0f, period, period * 2f, period * 3f, period * 2f, period, 0f, -period)
-    private val platforms =
-        List(12) { Platform(world, Rect(-1f + diffList[it % diffList.size], -1f + -1f * it, platformWidth, 1f)) }
+    private val blocks = mutableListOf<Block>()
+    private val platforms = mutableListOf<Platform>()
+    private val ladders = mutableListOf<Ladder>()
 
-    private val ladders =
-        List(3) { Ladder(world, Rect(-6f + 8f*it, -10f, 1f, 8f)) }
+    private val world by lazy {
+        World(gravity = Vec2(x = 0f, y = 40f)).registerAsContextDisposer(Body::class) {
+            destroyBody(it as Body)
+        }.apply {
+            setContactListener(ContactListener())
+            (assets.firstDay.layer("floor") as? TiledObjectLayer)?.objects?.forEach { blocks.add(Block(world, it.bounds / 120f)) }
+            (assets.firstDay.layer("wall") as? TiledObjectLayer)?.objects?.forEach { blocks.add(Block(world, it.bounds / 120f, friction = 0f)) }
+            (assets.firstDay.layer("platform") as? TiledObjectLayer)?.objects?.forEach { platforms.add(Platform(world, it.bounds / 120f)) }
+            (assets.firstDay.layer("ladder") as? TiledObjectLayer)?.objects?.forEach { ladders.add(Ladder(world, it.bounds / 120f)) }
+        }
+    }
+
+    private val manualParallaxOffset = mutableMapOf<String, Float>()
+    private val backgroundLayers by lazy {
+        assets.firstDay.layers.filterIsInstance<TiledTilesLayer>().filter {
+            it.name.startsWith("bg_")
+        }.also { it.forEach {
+            manualParallaxOffset[it.name] = it.name.split("_")[1].toFloat() * 0.05f
+        } }
+    }
+    private val foregroundLayers by lazy {
+        assets.firstDay.layers.filterIsInstance<TiledTilesLayer>().filter {
+            it.name.startsWith("fg_")
+        }.also { it.forEach {
+            manualParallaxOffset[it.name] = -it.name.split("_")[1].toFloat() * 0.05f
+        } }
+    }
 
     private var anyKeyPressed = true
 
@@ -103,8 +126,23 @@ class BlackCatGame(context: Context) : ContextListener(context), Disposing by Se
                 val isCatNearLadder = ladders.any { it.rect.intersects(cat.physicalRect) }
                 cat.update(dt, isCatNearLadder)
                 world.step(dt.seconds, 6, 2)
-                camera.position.x = cat.x//1920f/2f + (input.x - 1920f/2f)
-                camera.position.y = cat.y//1080f * 1.5f + (input.y -1080f/2f)
+                val catX = cat.x
+                val catY = cat.y
+                val cameraX = camera.position.x
+                val cameraY = camera.position.y
+                val horizontalBox = 1.5f
+                val verticalBox = 1.5f
+
+                if (catX > cameraX + horizontalBox) {
+                    camera.position.x = catX - horizontalBox
+                } else if (catX < cameraX - horizontalBox) {
+                    camera.position.x = catX + horizontalBox
+                }
+                if (catY > cameraY + verticalBox) {
+                    camera.position.y = catY - verticalBox
+                } else if (catY < cameraY - verticalBox) {
+                    camera.position.y = catY + verticalBox
+                }
             } else {
                 animationResetTimer += dt
                 if (animationResetTimer >= timeLimit) {
@@ -115,42 +153,17 @@ class BlackCatGame(context: Context) : ContextListener(context), Disposing by Se
             }
 
             viewport.apply(this)
-            batch.use(camera.viewProjection) {
-                assets.map.render(batch, camera, scale = 0.5f)
+            batch.use(camera.viewProjection) { batch ->
                 if (anyKeyPressed) {
-                    blocks.forEach { block ->
-                        batch.draw(
-                            Textures.white,
-                            block.rect.x,
-                            block.rect.y,
-                            width = block.rect.width,
-                            height = block.rect.height,
-                            colorBits = blockColor
-                        )
+                    backgroundLayers.forEach {
+                        val xOffset = (camera.position.x - manualParallaxOrigin.x)*manualParallaxOffset[it.name]!!
+                        it.render(batch, camera = camera, x = xOffset, y = 0f, scale = 1/120f)
                     }
-
-                    platforms.forEach { platform ->
-                        batch.draw(
-                            Textures.white,
-                            platform.rect.x,
-                            platform.rect.y,
-                            width = platform.rect.width,
-                            height = platform.rect.height,
-                            colorBits = platformColor
-                        )
+                    cat.render(batch)
+                    foregroundLayers.forEach {
+                        val xOffset = (camera.position.x - manualParallaxOrigin.x)*manualParallaxOffset[it.name]!!
+                        it.render(batch, camera = camera, x = xOffset, y = 0f, scale = 1/120f)
                     }
-
-                    ladders.forEach { ladder ->
-                        batch.draw(
-                            Textures.white,
-                            ladder.rect.x,
-                            ladder.rect.y,
-                            width = ladder.rect.width,
-                            height = ladder.rect.height,
-                            colorBits = ladderColor
-                        )
-                    }
-                    cat.render(it)
                 } else {
                     var xOffset = -900f / 120f
                     var yOffset = -580f / 120f
@@ -179,3 +192,6 @@ class BlackCatGame(context: Context) : ContextListener(context), Disposing by Se
         }
     }
 }
+
+private operator fun Rect.div(value: Float): Rect =
+    Rect(x / value, y / value, width / value, height / value)
