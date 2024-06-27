@@ -9,10 +9,11 @@ import org.jbox2d.dynamics.BodyType
 import org.jbox2d.dynamics.FixtureDef
 import org.jbox2d.dynamics.World
 
-class Block(world: World, val rect: Rect, friction: Float = 0.4f): HasContext<Body> {
+class Platform(world: World, val rect: Rect, friction: Float = .2f): HasContext<Body> {
 
     private val hx = rect.width / 2f
     private val hy = rect.height / 2f
+    val middleY = rect.y + hy
 
     private val body = world.createBody(BodyDef(
         type = BodyType.STATIC,
@@ -23,7 +24,8 @@ class Block(world: World, val rect: Rect, friction: Float = 0.4f): HasContext<Bo
             shape = PolygonShape().apply {
                 setAsBox(hx, hy)
             },
-            friction = friction
+            friction = friction,
+            userData = this@Platform
         ))
     }
 

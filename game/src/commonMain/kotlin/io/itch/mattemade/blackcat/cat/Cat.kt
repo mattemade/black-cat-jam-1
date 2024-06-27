@@ -1,11 +1,14 @@
 package io.itch.mattemade.blackcat.cat
 
+import com.lehaine.littlekt.graphics.Color
 import com.lehaine.littlekt.graphics.g2d.Batch
+import com.lehaine.littlekt.graphics.toFloatBits
 import com.lehaine.littlekt.input.InputMapController
 import com.lehaine.littlekt.util.seconds
 import io.itch.mattemade.blackcat.assets.CatAnimations
 import io.itch.mattemade.blackcat.input.GameInput
 import io.itch.mattemade.blackcat.physics.ContactBits
+import io.itch.mattemade.blackcat.physics.Platform
 import io.itch.mattemade.utils.animation.SignallingAnimationPlayer
 import io.itch.mattemade.utils.disposing.Disposing
 import io.itch.mattemade.utils.disposing.HasContext
@@ -29,8 +32,13 @@ class Cat(
 ) : Disposing by Self(), HasContext<Body> {
 
     private val size = Vec2(444f*16f/1920f, 366f*9f/1080f) // 3.7 x 3.05
+    private val hx = size.x / 2f
+    private val hy = size.y / 2f
+    private val physicalSize = Vec2(size.x * 0.5f, size.y * 0.5f)
+    private val textureOffset = Vec2(physicalSize.x - size.x, (physicalSize.y - size.y) / 2f)
+    private val physicalHw = physicalSize.x / 2f
+    private val physicalHh = physicalSize.y / 2f
     private val tempVec2 = Vec2()
-
 
     private val body = world.createBody(
         BodyDef(
@@ -40,14 +48,23 @@ class Cat(
             position.set(initialPosition)
         }
     )
+
+    var platformInContact: Platform? = null
+    var platformToFallThrough: Platform? = null
+
+    val x get() = body.position.x
+    val y get() = body.position.y
+    val bottom get() = body.position.y + physicalHh
+
     private val fixture = body.createFixture(FixtureDef(
         shape = PolygonShape().apply {
-            setAsBox(size.x, size.y)
+            setAsBox(physicalHw, physicalHh)
         },
         filter = Filter().apply {
             maskBits = ContactBits.CAT_BIT
         },
-        friction = 4f,
+        friction = 2f,
+        userData = this
     )) ?: error("Cat fixture is null! Should not happen!")
 
     override val context: Map<Any, Body> = mapOf(Body::class to body)
@@ -57,8 +74,8 @@ class Cat(
             field = value
         }
     private var facingRight = true
-    private var state: State = State.IDLE
-        set(value) {
+    var state: State = State.IDLE
+        private set(value) {
             if (field != value) {
                 currentAnimation = when (value) {
                     State.IDLE -> animations.idle
@@ -85,15 +102,32 @@ class Cat(
 
         var timeMultiplier = 1.0
 
+        platformInContact?.let { platform ->
+            if (bottom > platform.middleY) {
+                platformInContact = null
+            }
+        }
+
+        platformToFallThrough?.let { platform ->
+            if (bottom > platform.middleY) {
+                platformToFallThrough = null
+            }
+        }
+
         if (controller.pressed(GameInput.JUMP)) {
             if (state == State.WALKING || state == State.IDLE) {
-                body.applyLinearImpulse(tempVec2.set(0f, -12f), body.position, true)
+                body.applyLinearImpulse(tempVec2.set(0f, -16f), body.position, true)
                 state = State.JUMPING
-            } else if (state == State.CROUCHING || state == State.CRAWLING) {
+                platformInContact = null
+                platformToFallThrough = null
+            } else if (state == State.CROUCHING || state == State.CROUCH_IDLE || state == State.CRAWLING) {
                 // if standing on the branch
-                // temprorarily disable the branch contact points
-                state = State.FREEFALLING
-                // after some time enable them back
+                // temporarily disable the branch contact points
+                platformInContact?.let {
+                    platformToFallThrough = platformInContact
+                    body.applyLinearImpulse(tempVec2.set(0f, 6f), body.position, true)
+                    state = State.FREEFALLING
+                }
             }
         }
 
@@ -116,19 +150,18 @@ class Cat(
             if (state == State.JUMPING) {
                 state = State.FALLING
             } else if (state != State.FALLING && state != State.FREEFALLING) {
-                // TODO
                 state = State.FREEFALLING
             }
         } else if (body.linearVelocityX != 0f) {
-            if (yMovement < 0) {
+            if (yMovement > 0) {
                 state = State.CRAWLING
             } else {
                 state = State.WALKING
             }
-        } else { // horizontal velocity 0
+        } else { // vertical and horizontal velocity 0
             if (state == State.FALLING || state == State.FREEFALLING) {
                 state = State.LANDING
-            } else if (yMovement < 0) {
+            } else if (yMovement > 0) {
                 if (state == State.CRAWLING) {
                     state = State.CROUCH_IDLE
                 } else if (state != State.CROUCH_IDLE && state != State.CROUCHING) {
@@ -144,14 +177,13 @@ class Cat(
         if (xMovement != 0f) {
             val currentSpeed = abs(body.linearVelocityX)
             if (currentSpeed < 10f) {
-                body.applyForceToCenter(tempVec2.set(-xMovement * dt.seconds * 4000f, 0f))
+                body.applyForceToCenter(tempVec2.set(xMovement * dt.seconds * 4000f, 0f))
             }
-            facingRight = xMovement > 0f
+            facingRight = xMovement < 0f
             if (state == State.WALKING || state == State.CRAWLING) {
                 timeMultiplier = currentSpeed / 7.0
             }
         }
-
 
         currentAnimation.update(dt * timeMultiplier)
         if (currentAnimation.currentKeyFrame == null) {
@@ -165,13 +197,18 @@ class Cat(
         }
     }
 
+    private val debugColor = Color.BLUE.toFloatBits()
+
     fun render(batch: Batch) {
+        val x = body.position.x - hx// - textureOffset.x
+        val y = body.position.y - hy + textureOffset.y
+        //batch.draw(Textures.white, x, y, width = size.x, height = size.y)
         currentAnimation.currentKeyFrame?.let { frame ->
-            batch.draw(frame, body.position.x, body.position.y, width = size.x, height = size.y, flipX = facingRight)
+            batch.draw(frame, x, y, width = size.x, height = size.y, flipX = facingRight)
         }
     }
 
-    private enum class State {
+    enum class State {
         IDLE,
         WALKING,
         JUMPING,

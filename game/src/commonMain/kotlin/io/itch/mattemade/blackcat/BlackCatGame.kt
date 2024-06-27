@@ -5,10 +5,11 @@ import com.lehaine.littlekt.ContextListener
 import com.lehaine.littlekt.graph.node.resource.HAlign
 import com.lehaine.littlekt.graphics.Color
 import com.lehaine.littlekt.graphics.Fonts
+import com.lehaine.littlekt.graphics.Textures
 import com.lehaine.littlekt.graphics.g2d.SpriteBatch
-import com.lehaine.littlekt.graphics.g2d.shape.ShapeRenderer
 import com.lehaine.littlekt.graphics.g2d.use
 import com.lehaine.littlekt.graphics.gl.ClearBufferMask
+import com.lehaine.littlekt.graphics.toFloatBits
 import com.lehaine.littlekt.math.Rect
 import com.lehaine.littlekt.util.seconds
 import com.lehaine.littlekt.util.viewport.FitViewport
@@ -17,6 +18,8 @@ import io.itch.mattemade.blackcat.cat.Cat
 import io.itch.mattemade.blackcat.input.GameInput
 import io.itch.mattemade.blackcat.input.bindInputs
 import io.itch.mattemade.blackcat.physics.Block
+import io.itch.mattemade.blackcat.physics.ContactListener
+import io.itch.mattemade.blackcat.physics.Platform
 import io.itch.mattemade.utils.disposing.Disposing
 import io.itch.mattemade.utils.disposing.Self
 import org.jbox2d.common.Vec2
@@ -34,7 +37,6 @@ class BlackCatGame(context: Context) : ContextListener(context), Disposing by Se
 
 
     private val batch = SpriteBatch(context).disposing()
-    private val shapeRenderer = ShapeRenderer(batch)
     private val viewport = FitViewport(virtualWidth, virtualHeight)
     private val camera = viewport.camera
 
@@ -49,14 +51,27 @@ class BlackCatGame(context: Context) : ContextListener(context), Disposing by Se
     private val cat by lazy { Cat(Vec2(-4f, -4f), world, assets.catAnimations, controller) }
     private val world = World(gravity = Vec2(x = 0f, y = 40f)).registerAsContextDisposer(Body::class) {
         destroyBody(it as Body)
+    }.apply {
+        setContactListener(ContactListener())
     }
     private val blocks = listOf(
-        Block(world, Rect(-10f,5f, 30f, 3f)),
-        Block(world, Rect(-12f,-5f, 1.5f, 10f), friction = 0f),
-        Block(world, Rect(8.5f,-5f, 1.5f, 10f), friction = 0f),
+        Block(world, Rect(-10f, 0f, 30f, 1f)),
+        Block(world, Rect(-10f, -19f, 1f, 20f), friction = 0f),
+        Block(world, Rect(20f, -19f, 1f, 20f), friction = 0f),
     )
 
-    private var anyKeyPressed = false
+    private val platformWidth = 3f
+    private val platformGap = 1f
+    private val period = platformWidth + platformGap
+    private val diffList = listOf(0f, period, period * 2f, period * 3f, period * 2f, period, 0f, -period)
+    private val platforms =
+        List(12) { Platform(world, Rect(-1f + diffList[it % diffList.size], -1f + -1f * it, platformWidth, 1f)) }
+
+
+    private var anyKeyPressed = true
+
+    private val blockColor = Color.RED.toFloatBits()
+    private val platformColor = Color.GREEN.toFloatBits()
 
     override suspend fun Context.start() {
         onResize { width, height ->
@@ -81,8 +96,10 @@ class BlackCatGame(context: Context) : ContextListener(context), Disposing by Se
             anyKeyPressed = anyKeyPressed || controller.pressed(GameInput.ANY)
 
             if (anyKeyPressed) {
-                world.step(dt.seconds, 6, 2)
                 cat.update(dt)
+                world.step(dt.seconds, 6, 2)
+                camera.position.x = cat.x//1920f/2f + (input.x - 1920f/2f)
+                camera.position.y = cat.y//1080f * 1.5f + (input.y -1080f/2f)
             } else {
                 animationResetTimer += dt
                 if (animationResetTimer >= timeLimit) {
@@ -92,23 +109,50 @@ class BlackCatGame(context: Context) : ContextListener(context), Disposing by Se
                 assets.catAnimations.all.forEach { list -> list.forEach { it.update(dt) } }
             }
 
-            camera.position.x = cameraOffsetX//1920f/2f + (input.x - 1920f/2f)
-            camera.position.y = cameraOffsetY//1080f * 1.5f + (input.y -1080f/2f)
             viewport.apply(this)
             batch.use(camera.viewProjection) {
                 assets.map.render(batch, camera, scale = 0.5f)
                 if (anyKeyPressed) {
+                    blocks.forEach { block ->
+                        batch.draw(
+                            Textures.white,
+                            block.rect.x,
+                            block.rect.y,
+                            width = block.rect.width,
+                            height = block.rect.height,
+                            colorBits = blockColor
+                        )
+                    }
+
+                    platforms.forEach { platform ->
+                        batch.draw(
+                            Textures.white,
+                            platform.rect.x,
+                            platform.rect.y,
+                            width = platform.rect.width,
+                            height = platform.rect.height,
+                            colorBits = platformColor
+                        )
+                    }
                     cat.render(it)
                 } else {
-                    var xOffset = -900f/120f
-                    var yOffset = -580f/120f
+                    var xOffset = -900f / 120f
+                    var yOffset = -580f / 120f
                     assets.catAnimations.all.forEach { list ->
                         list.forEach { animation ->
-                            animation.currentKeyFrame?.let { batch.draw(it, xOffset, yOffset, width = 3.7f, height = 3.05f) }
-                            xOffset += 450f/120f
+                            animation.currentKeyFrame?.let {
+                                batch.draw(
+                                    it,
+                                    xOffset,
+                                    yOffset,
+                                    width = 3.7f,
+                                    height = 3.05f
+                                )
+                            }
+                            xOffset += 450f / 120f
                         }
-                        xOffset = -900f/120f
-                        yOffset += 370f/120f
+                        xOffset = -900f / 120f
+                        yOffset += 370f / 120f
                     }
                 }
             }
