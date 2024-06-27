@@ -15,6 +15,7 @@ class CatAnimations(context: Context) : AssetPack(context, { println(it) }) {
     val fall by "texture/cat/fall".prepareAnimationPlayer()
     val land by "texture/cat/land".prepareAnimationPlayer()
     val freefall by "texture/cat/freefall".prepareAnimationPlayer()
+    val climbback by "texture/cat/climbingback".prepareAnimationPlayer()
 
     val all by lazy { listOf(
         listOf(idle, walk, crouch, crawl),

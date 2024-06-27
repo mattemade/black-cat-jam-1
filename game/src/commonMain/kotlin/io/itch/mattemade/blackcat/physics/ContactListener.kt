@@ -19,8 +19,9 @@ class ContactListener: ContactListener {
     }
 
     override fun preSolve(contact: Contact, oldManifold: Manifold) {
-        val platform = (contact.getFixtureA()?.userData as? Platform) ?: (contact.getFixtureB()?.userData as? Platform)
-        val cat = (contact.getFixtureA()?.userData as? Cat) ?: (contact.getFixtureB()?.userData as? Cat)
+        val platform = contact.getUserData<Platform>()
+        val cat = contact.getUserData<Cat>()
+        val ladder = contact.getUserData<Ladder>()
         if (platform != null && cat != null) {
             if (cat.platformInContact != platform) {
                 val catLandsOnThisPlatform = (cat.state == Cat.State.FALLING || cat.state == Cat.State.FREEFALLING) && cat.bottom <= platform.rect.y
@@ -37,4 +38,7 @@ class ContactListener: ContactListener {
             }
         }
     }
+
+    private inline fun <reified T> Contact.getUserData(): T? =
+        (getFixtureA()?.userData as? T) ?: (getFixtureB()?.userData as? T)
 }

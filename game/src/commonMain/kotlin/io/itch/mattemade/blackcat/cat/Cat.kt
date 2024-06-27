@@ -4,6 +4,7 @@ import com.lehaine.littlekt.graphics.Color
 import com.lehaine.littlekt.graphics.g2d.Batch
 import com.lehaine.littlekt.graphics.toFloatBits
 import com.lehaine.littlekt.input.InputMapController
+import com.lehaine.littlekt.math.Rect
 import com.lehaine.littlekt.util.seconds
 import io.itch.mattemade.blackcat.assets.CatAnimations
 import io.itch.mattemade.blackcat.input.GameInput
@@ -31,11 +32,11 @@ class Cat(
     private val controller: InputMapController<GameInput>
 ) : Disposing by Self(), HasContext<Body> {
 
-    private val size = Vec2(444f*16f/1920f, 366f*9f/1080f) // 3.7 x 3.05
+    private val size = Vec2(444f * 16f / 1920f, 366f * 9f / 1080f) // 3.7 x 3.05
     private val hx = size.x / 2f
     private val hy = size.y / 2f
     private val physicalSize = Vec2(size.x * 0.5f, size.y * 0.5f)
-    private val textureOffset = Vec2(physicalSize.x - size.x, (physicalSize.y - size.y) / 2f)
+    private val textureOffset = Vec2(physicalSize.x - size.x, (physicalSize.y - size.y) / 2f + 0.15f)
     private val physicalHw = physicalSize.x / 2f
     private val physicalHh = physicalSize.y / 2f
     private val tempVec2 = Vec2()
@@ -51,21 +52,26 @@ class Cat(
 
     var platformInContact: Platform? = null
     var platformToFallThrough: Platform? = null
+    //val laddersInContact = mutableSetOf<Ladder>()
 
     val x get() = body.position.x
     val y get() = body.position.y
     val bottom get() = body.position.y + physicalHh
+    private val tempRect = Rect()
+    val physicalRect: Rect get() = tempRect.set(x - physicalHw, y - physicalHw, physicalSize.x, physicalSize.y)
 
-    private val fixture = body.createFixture(FixtureDef(
-        shape = PolygonShape().apply {
-            setAsBox(physicalHw, physicalHh)
-        },
-        filter = Filter().apply {
-            maskBits = ContactBits.CAT_BIT
-        },
-        friction = 2f,
-        userData = this
-    )) ?: error("Cat fixture is null! Should not happen!")
+    private val fixture = body.createFixture(
+        FixtureDef(
+            shape = PolygonShape().apply {
+                setAsBox(physicalHw, physicalHh)
+            },
+            filter = Filter().apply {
+                maskBits = ContactBits.CAT_BIT
+            },
+            friction = 2f,
+            userData = this
+        )
+    ) ?: error("Cat fixture is null! Should not happen!")
 
     override val context: Map<Any, Body> = mapOf(Body::class to body)
     private var currentAnimation: SignallingAnimationPlayer = animations.idle
@@ -89,17 +95,49 @@ class Cat(
                     State.STANDING -> animations.stand
                     State.CRAWLING -> animations.crawl
                     State.ATTACKING -> animations.attack
+                    State.BACK_CLIMBING -> animations.climbback
                 }
                 field = value
             }
         }
 
-    fun update(dt: Duration) {
+    fun update(dt: Duration, isNearLadder: Boolean) {
         val xMovement = controller.axis(GameInput.HORIZONTAL)
         val yMovement = controller.axis(GameInput.VERTICAL)
-        //body.position.x -= xMovement * dt.seconds * 1000f
-        //body.position.y -= yMovement * dt.seconds * 500f
 
+        if (isNearLadder/*laddersInContact.isNotEmpty()*/) {
+            if (state == State.JUMPING || state == State.FALLING || state == State.FREEFALLING) {
+                if (yMovement < 0) {
+                    state = State.BACK_CLIMBING
+                    body.type = BodyType.STATIC
+                }
+            }
+        } else {
+            body.type = BodyType.DYNAMIC
+        }
+
+
+        if (body.type == BodyType.STATIC) {
+            updateClimbing(dt, xMovement, yMovement)
+        } else {
+            updatePlatforming(dt, xMovement, yMovement)
+        }
+    }
+
+    private fun updateClimbing(dt: Duration, xMovement: Float, yMovement: Float) {
+        var timeMultiplier = 1.0
+        if (controller.pressed(GameInput.JUMP)) {
+            body.type = BodyType.DYNAMIC
+        } else {
+            val seconds = dt.seconds
+            timeMultiplier = (tempVec2.set(xMovement, yMovement).length() * 0.6f).toDouble()
+            body.position.addLocal(tempVec2.mul(seconds*6f))
+
+        }
+        currentAnimation.update(dt * timeMultiplier)
+    }
+
+    private fun updatePlatforming(dt: Duration, xMovement: Float, yMovement: Float) {
         var timeMultiplier = 1.0
 
         platformInContact?.let { platform ->
@@ -115,7 +153,7 @@ class Cat(
         }
 
         if (controller.pressed(GameInput.JUMP)) {
-            if (state == State.WALKING || state == State.IDLE) {
+            if (state == State.WALKING || state == State.IDLE || state == State.LANDING) {
                 body.applyLinearImpulse(tempVec2.set(0f, -16f), body.position, true)
                 state = State.JUMPING
                 platformInContact = null
@@ -134,9 +172,12 @@ class Cat(
 
         if (controller.pressed(GameInput.ATTACK)) {
             if (state == State.JUMPING || state == State.FALLING || state == State.FREEFALLING) {
-                // TODO jump attack
                 state = State.FREEFALLING
-                body.applyLinearImpulse(tempVec2.set(if (xMovement > 0 || facingRight) -12f else 12f, 0f), body.position, true)
+                body.applyLinearImpulse(
+                    tempVec2.set(if (xMovement < 0 || facingRight) -12f else 12f, 0f),
+                    body.position,
+                    true
+                )
             } else {
                 state = State.ATTACKING
             }
@@ -176,7 +217,9 @@ class Cat(
 
         if (xMovement != 0f) {
             val currentSpeed = abs(body.linearVelocityX)
-            if (currentSpeed < 10f) {
+            val speedlimit =
+                if (state == State.CRAWLING || state == State.CROUCHING || state == State.CROUCH_IDLE) 5f else 10f
+            if (currentSpeed < speedlimit) {
                 body.applyForceToCenter(tempVec2.set(xMovement * dt.seconds * 4000f, 0f))
             }
             facingRight = xMovement < 0f
@@ -220,6 +263,7 @@ class Cat(
         STANDING,
         CRAWLING,
         ATTACKING,
+        BACK_CLIMBING,
     }
 
 }

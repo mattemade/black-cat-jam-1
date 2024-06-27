@@ -19,6 +19,7 @@ import io.itch.mattemade.blackcat.input.GameInput
 import io.itch.mattemade.blackcat.input.bindInputs
 import io.itch.mattemade.blackcat.physics.Block
 import io.itch.mattemade.blackcat.physics.ContactListener
+import io.itch.mattemade.blackcat.physics.Ladder
 import io.itch.mattemade.blackcat.physics.Platform
 import io.itch.mattemade.utils.disposing.Disposing
 import io.itch.mattemade.utils.disposing.Self
@@ -67,11 +68,14 @@ class BlackCatGame(context: Context) : ContextListener(context), Disposing by Se
     private val platforms =
         List(12) { Platform(world, Rect(-1f + diffList[it % diffList.size], -1f + -1f * it, platformWidth, 1f)) }
 
+    private val ladders =
+        List(3) { Ladder(world, Rect(-6f + 8f*it, -10f, 1f, 8f)) }
 
     private var anyKeyPressed = true
 
     private val blockColor = Color.RED.toFloatBits()
     private val platformColor = Color.GREEN.toFloatBits()
+    private val ladderColor = Color.BLUE.toFloatBits()
 
     override suspend fun Context.start() {
         onResize { width, height ->
@@ -96,7 +100,8 @@ class BlackCatGame(context: Context) : ContextListener(context), Disposing by Se
             anyKeyPressed = anyKeyPressed || controller.pressed(GameInput.ANY)
 
             if (anyKeyPressed) {
-                cat.update(dt)
+                val isCatNearLadder = ladders.any { it.rect.intersects(cat.physicalRect) }
+                cat.update(dt, isCatNearLadder)
                 world.step(dt.seconds, 6, 2)
                 camera.position.x = cat.x//1920f/2f + (input.x - 1920f/2f)
                 camera.position.y = cat.y//1080f * 1.5f + (input.y -1080f/2f)
@@ -132,6 +137,17 @@ class BlackCatGame(context: Context) : ContextListener(context), Disposing by Se
                             width = platform.rect.width,
                             height = platform.rect.height,
                             colorBits = platformColor
+                        )
+                    }
+
+                    ladders.forEach { ladder ->
+                        batch.draw(
+                            Textures.white,
+                            ladder.rect.x,
+                            ladder.rect.y,
+                            width = ladder.rect.width,
+                            height = ladder.rect.height,
+                            colorBits = ladderColor
                         )
                     }
                     cat.render(it)
