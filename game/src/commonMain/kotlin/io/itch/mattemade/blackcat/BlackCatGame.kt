@@ -99,6 +99,18 @@ class BlackCatGame(context: Context) : ContextListener(context), Disposing by Se
                     }
                 )
             }
+            (assets.firstDay.layer("block") as? TiledObjectLayer)?.objects?.forEach {
+                blocks.add(
+                    Block(
+                        world,
+                        it.bounds / 120f,
+                        friction = 0f
+                    ) {
+                        categoryBits = ContactBits.BLOCK_BIT
+                        maskBits = ContactBits.CAT_BIT
+                    }
+                )
+            }
             (assets.firstDay.layer("wall") as? TiledObjectLayer)?.objects?.forEach {
                 walls.add(
                     Wall(

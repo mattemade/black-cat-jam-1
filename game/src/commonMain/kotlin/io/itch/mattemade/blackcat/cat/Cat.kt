@@ -61,13 +61,14 @@ class Cat(
     val directionX get() = x + body.linearVelocityX / 10f
     val directionY
         get() =
-            y + if (state == State.BACK_CLIMBING) {
+            y + if (state == State.BACK_CLIMBING || state == State.WALL_CLIMBING) {
                 body.linearVelocityY.sign * 1000f
             } else if (state == State.CROUCHING || state == State.CROUCH_IDLE || state == State.CRAWLING) {
                 3f
             } else {
                 body.linearVelocityY / 10f
             }
+    val top get() = body.position.y - physicalHh
     val bottom get() = body.position.y + physicalHh
     private val tempRect = Rect()
     val physicalRect: Rect get() = tempRect.set(x - physicalHw, y - physicalHw, physicalSize.x, physicalSize.y)
@@ -134,7 +135,7 @@ class Cat(
             }
         } else if (state != State.BACK_CLIMBING && climbingArea != null && ignoringWallContactFor <= Duration.ZERO && (xMovement != 0f || state == State.WALL_CLIMBING)) {
             val y = y
-            if (y > climbingArea.y || bottom < climbingArea.x) {
+            if (top > climbingArea.y || bottom < climbingArea.x) {
                 climbingWall = null
                 body.type = BodyType.DYNAMIC
             } else if (state != State.WALL_CLIMBING) {

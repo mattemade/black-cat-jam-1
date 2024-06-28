@@ -1366,28 +1366,6 @@
                  "y":17760
                 }, 
                 {
-                 "height":4080,
-                 "id":19,
-                 "name":"",
-                 "rotation":0,
-                 "type":"",
-                 "visible":true,
-                 "width":240,
-                 "x":13920,
-                 "y":13680
-                }, 
-                {
-                 "height":3240,
-                 "id":20,
-                 "name":"",
-                 "rotation":0,
-                 "type":"",
-                 "visible":true,
-                 "width":240,
-                 "x":8880,
-                 "y":14520
-                }, 
-                {
                  "height":120,
                  "id":31,
                  "name":"",
@@ -1623,9 +1601,42 @@
          "visible":true,
          "x":0,
          "y":0
+        }, 
+        {
+         "draworder":"topdown",
+         "id":15,
+         "name":"block",
+         "objects":[
+                {
+                 "height":3240,
+                 "id":43,
+                 "name":"",
+                 "rotation":0,
+                 "type":"",
+                 "visible":true,
+                 "width":240,
+                 "x":8880,
+                 "y":14520
+                }, 
+                {
+                 "height":4080,
+                 "id":44,
+                 "name":"",
+                 "rotation":0,
+                 "type":"",
+                 "visible":true,
+                 "width":240,
+                 "x":13920,
+                 "y":13680
+                }],
+         "opacity":1,
+         "type":"objectgroup",
+         "visible":true,
+         "x":0,
+         "y":0
         }],
- "nextlayerid":15,
- "nextobjectid":43,
+ "nextlayerid":16,
+ "nextobjectid":45,
  "orientation":"orthogonal",
  "parallaxoriginx":9960,
  "parallaxoriginy":17400,
