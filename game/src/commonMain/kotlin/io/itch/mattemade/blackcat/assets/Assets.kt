@@ -8,7 +8,7 @@ import com.lehaine.littlekt.file.vfs.readTtfFont
 class Assets(context: Context, onAnimationSignal: (String) -> Unit): AssetPack(context) {
 
     val catAnimations = CatAnimations(context, onAnimationSignal).packed()
-    val firstDay by prepare { context.resourcesVfs["maps/world2/first_day.tmj"].readTiledMap() }
+    val firstDay by prepare { context.resourcesVfs["maps/level1/level1.tmj"].readTiledMap() }
     val sounds = Sounds(context).packed()
 
 }

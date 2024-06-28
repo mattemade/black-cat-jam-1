@@ -62,9 +62,9 @@ class Cat(
     val directionX get() = x + body.linearVelocityX / 10f
     val directionY
         get() =
-            y + if (state == State.BACK_CLIMBING || state == State.WALL_CLIMBING) {
+            y + /*if (state == State.BACK_CLIMBING || state == State.WALL_CLIMBING) {
                 body.linearVelocityY.sign * 1000f
-            } else if (state == State.CROUCHING || state == State.CROUCH_IDLE || state == State.CRAWLING) {
+            } else */if (state == State.CROUCHING || state == State.CROUCH_IDLE || state == State.CRAWLING) {
                 3f
             } else {
                 body.linearVelocityY / 10f
@@ -131,25 +131,35 @@ class Cat(
             if (state == State.JUMPING || state == State.FALLING || state == State.FREEFALLING || state == State.WALL_CLIMBING) {
                 if (yMovement < 0 || (state == State.WALL_CLIMBING && (facingRight && xMovement > 0f || !facingRight && xMovement < 0f))) {
                     state = State.BACK_CLIMBING
-                    body.type = BodyType.STATIC
+                    body.linearVelocity.set(0f, 0f)
+                    body.gravityScale = 0f
+                    //body.type = BodyType.STATIC
                 }
             }
         } else if (state != State.BACK_CLIMBING && climbingArea != null && ignoringWallContactFor <= Duration.ZERO && (xMovement != 0f || state == State.WALL_CLIMBING)) {
             val y = y
             if (top > climbingArea.y || bottom < climbingArea.x) {
                 climbingWall = null
-                body.type = BodyType.DYNAMIC
+                body.gravityScale = 1f
+                state = State.FREEFALLING
+                // body.type = BodyType.DYNAMIC
             } else if (state != State.WALL_CLIMBING) {
                 state = State.WALL_CLIMBING
-                body.type = BodyType.STATIC
+                body.linearVelocity.set(0f, 0f)
+                body.gravityScale = 0f
+                //body.type = BodyType.STATIC
             }
         } else if (!isNearLadder) {
             climbingWall = null
-            body.type = BodyType.DYNAMIC
+            body.gravityScale = 1f
+            if (state == State.BACK_CLIMBING) {
+                state = State.FREEFALLING
+            }
+            // body.type = BodyType.DYNAMIC
         }
 
 
-        if (body.type == BodyType.STATIC) {
+        if (state == State.BACK_CLIMBING || state == State.WALL_CLIMBING/*body.type == BodyType.STATIC*/) {
             if (state == State.BACK_CLIMBING) {
                 if (climbingArea != null) {
                     // TODO; if go against the wall - set the state to wall climbing and update wall climbing
@@ -170,27 +180,33 @@ class Cat(
         var timeMultiplier = 1.0
         if (controller.pressed(GameInput.JUMP) || (facingRight && xMovement > 0f || !facingRight && xMovement < 0f)) {
             climbingWall = null
-            body.type = BodyType.DYNAMIC
+            body.gravityScale = 1f
+            state = State.FREEFALLING
             ignoringWallContactFor = 0.1f.seconds
         } else {
             val seconds = dt.seconds
             timeMultiplier = (tempVec2.set(0f, yMovement).length() * 0.6f).toDouble()
-            body.position.addLocal(tempVec2.mulLocal(seconds * 6f))
+            body.linearVelocity.set(tempVec2.mulLocal(seconds * 400f))
 
         }
+        body.isAwake = true
         currentAnimation.update(dt * timeMultiplier)
     }
 
     private fun updateClimbing(dt: Duration, xMovement: Float, yMovement: Float) {
         var timeMultiplier = 1.0
         if (controller.pressed(GameInput.JUMP)) {
-            body.type = BodyType.DYNAMIC
+            body.gravityScale = 1f
+            state = State.FREEFALLING
         } else {
             val seconds = dt.seconds
             timeMultiplier = (tempVec2.set(xMovement, yMovement).length() * 0.6f).toDouble()
-            body.position.addLocal(tempVec2.mulLocal(seconds * 6f))
+            body.linearVelocity.set(tempVec2.mulLocal(seconds * 400f))
         }
-        facingRight = xMovement < 0f
+        body.isAwake = true
+        if (xMovement != 0f) {
+            facingRight = xMovement < 0f
+        }
         currentAnimation.update(dt * timeMultiplier)
     }
 

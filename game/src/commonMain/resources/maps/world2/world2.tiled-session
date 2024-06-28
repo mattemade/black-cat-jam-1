@@ -33,15 +33,23 @@
             "scaleInEditor": 1
         },
         "first_day.tmj": {
-            "scale": 0.33,
-            "selectedLayer": 4,
+            "expandedObjectLayers": [
+                12,
+                10,
+                14,
+                11,
+                9,
+                15
+            ],
+            "scale": 0.125,
+            "selectedLayer": 12,
             "viewCenter": {
-                "x": 10033.333333333332,
-                "y": 17421.21212121212
+                "x": 10800,
+                "y": 16624
             }
         }
     },
-    "last.imagePath": "C:/Users/yufimtsev/dev/black-cat-game/game/src/commonMain/resources/maps/world2",
+    "last.imagePath": "C:/Users/yufimtsev/dev/black-cat-game/game/src/commonMain/resources/maps/level1",
     "map.height": 100,
     "map.lastUsedFormat": "json",
     "map.tileHeight": 120,
@@ -52,12 +60,12 @@
     "project": "world2.tiled-project",
     "recentFiles": [
         "first_day.tmj",
+        "bg_1_leaves.tsj",
+        "bg_0_tree.tsj",
         "fg_2_grass.tsj",
         "fg_1_grass.tsj",
         "bg_1_mountain.tsj",
-        "bg_1_leaves.tsj",
-        "bg_1_grass.tsj",
-        "bg_0_tree.tsj"
+        "bg_1_grass.tsj"
     ],
     "tileset.lastUsedFormat": "json",
     "tileset.tileSize": {
