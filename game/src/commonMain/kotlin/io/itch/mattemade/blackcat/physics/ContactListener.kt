@@ -37,6 +37,7 @@ class ContactListener: ContactListener {
                 }
             }
         }
+        //println("contact! ${contact.getFixtureA()?.userData} ${contact.getFixtureB()?.userData}")
     }
 
     private inline fun <reified T> Contact.getUserData(): T? =

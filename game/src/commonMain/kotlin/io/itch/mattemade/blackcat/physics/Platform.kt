@@ -6,6 +6,7 @@ import org.jbox2d.collision.shapes.PolygonShape
 import org.jbox2d.dynamics.Body
 import org.jbox2d.dynamics.BodyDef
 import org.jbox2d.dynamics.BodyType
+import org.jbox2d.dynamics.Filter
 import org.jbox2d.dynamics.FixtureDef
 import org.jbox2d.dynamics.World
 
@@ -25,6 +26,10 @@ class Platform(world: World, val rect: Rect, friction: Float = .2f): HasContext<
                 setAsBox(hx, hy)
             },
             friction = friction,
+            filter = Filter().apply {
+                categoryBits = ContactBits.PLATFORM_BIT
+                maskBits = ContactBits.CAT_BIT
+            },
             userData = this@Platform
         ))
     }

@@ -6,18 +6,58 @@
     "activeFile": "",
     "expandedProjectPaths": [
     ],
+    "file.lastUsedOpenFilter": "All Files (*)",
     "fileStates": {
+        "bg_0_tree.tsj": {
+            "scaleInDock": 0.33,
+            "scaleInEditor": 0.75
+        },
+        "bg_1_grass.tsj": {
+            "scaleInDock": 0.25,
+            "scaleInEditor": 0.5
+        },
+        "bg_1_leaves.tsj": {
+            "scaleInDock": 0.33,
+            "scaleInEditor": 1
+        },
+        "bg_1_mountain.tsj": {
+            "scaleInDock": 0.33,
+            "scaleInEditor": 1
+        },
+        "fg_1_grass.tsj": {
+            "scaleInDock": 0.25,
+            "scaleInEditor": 1
+        },
+        "fg_2_grass.tsj": {
+            "scaleInDock": 0.25,
+            "scaleInEditor": 1
+        },
+        "first_day.tmj": {
+            "scale": 0.33,
+            "selectedLayer": 4,
+            "viewCenter": {
+                "x": 10033.333333333332,
+                "y": 17421.21212121212
+            }
+        }
     },
     "last.imagePath": "C:/Users/yufimtsev/dev/black-cat-game/game/src/commonMain/resources/maps/world2",
-    "map.height": 60,
+    "map.height": 100,
     "map.lastUsedFormat": "json",
     "map.tileHeight": 120,
     "map.tileWidth": 120,
-    "map.width": 60,
+    "map.width": 100,
     "openFiles": [
     ],
     "project": "world2.tiled-project",
     "recentFiles": [
+        "first_day.tmj",
+        "fg_2_grass.tsj",
+        "fg_1_grass.tsj",
+        "bg_1_mountain.tsj",
+        "bg_1_leaves.tsj",
+        "bg_1_grass.tsj",
+        "bg_0_tree.tsj"
     ],
     "tileset.lastUsedFormat": "json",
     "tileset.tileSize": {

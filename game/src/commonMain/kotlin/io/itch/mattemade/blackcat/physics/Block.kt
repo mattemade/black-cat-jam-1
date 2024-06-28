@@ -6,10 +6,14 @@ import org.jbox2d.collision.shapes.PolygonShape
 import org.jbox2d.dynamics.Body
 import org.jbox2d.dynamics.BodyDef
 import org.jbox2d.dynamics.BodyType
+import org.jbox2d.dynamics.Filter
 import org.jbox2d.dynamics.FixtureDef
 import org.jbox2d.dynamics.World
 
-class Block(world: World, val rect: Rect, friction: Float = 0.4f): HasContext<Body> {
+class Block(world: World, val rect: Rect, friction: Float = 0.4f, userData: String? = null, filter: Filter.() -> Unit = {
+    categoryBits = ContactBits.ALL_NORMAL_BITS
+    maskBits = ContactBits.ALL_NORMAL_BITS
+}): HasContext<Body> {
 
     private val hx = rect.width / 2f
     private val hy = rect.height / 2f
@@ -23,7 +27,9 @@ class Block(world: World, val rect: Rect, friction: Float = 0.4f): HasContext<Bo
             shape = PolygonShape().apply {
                 setAsBox(hx, hy)
             },
-            friction = friction
+            friction = friction,
+            filter = Filter().apply(filter),
+            userData = userData
         ))
     }
 

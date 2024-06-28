@@ -66,7 +66,8 @@ class Cat(
                 setAsBox(physicalHw, physicalHh)
             },
             filter = Filter().apply {
-                maskBits = ContactBits.CAT_BIT
+                categoryBits = ContactBits.CAT_BIT
+                maskBits = ContactBits.BLOCK_BIT or ContactBits.PLATFORM_BIT or ContactBits.WALL_BIT
             },
             friction = 2f,
             userData = this

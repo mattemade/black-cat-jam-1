@@ -1274,6 +1274,50 @@
         }, 
         {
          "draworder":"topdown",
+         "id":14,
+         "name":"nocamera",
+         "objects":[
+                {
+                 "height":720,
+                 "id":15,
+                 "name":"",
+                 "rotation":0,
+                 "type":"",
+                 "visible":true,
+                 "width":600,
+                 "x":8520,
+                 "y":16800
+                }, 
+                {
+                 "height":720,
+                 "id":16,
+                 "name":"",
+                 "rotation":0,
+                 "type":"",
+                 "visible":true,
+                 "width":2400,
+                 "x":10080,
+                 "y":17880
+                }, 
+                {
+                 "height":1200,
+                 "id":17,
+                 "name":"",
+                 "rotation":0,
+                 "type":"",
+                 "visible":true,
+                 "width":600,
+                 "x":12360,
+                 "y":16560
+                }],
+         "opacity":1,
+         "type":"objectgroup",
+         "visible":true,
+         "x":0,
+         "y":0
+        }, 
+        {
+         "draworder":"topdown",
          "id":7,
          "name":"spawn",
          "objects":[
@@ -1393,8 +1437,8 @@
          "x":0,
          "y":0
         }],
- "nextlayerid":13,
- "nextobjectid":14,
+ "nextlayerid":15,
+ "nextobjectid":19,
  "orientation":"orthogonal",
  "parallaxoriginx":9960,
  "parallaxoriginy":17400,
@@ -1425,6 +1469,10 @@
         {
          "firstgid":321,
          "source":"fg_2_grass.tsj"
+        }, 
+        {
+         "firstgid":385,
+         "source":"bg_0_tree.tsj"
         }],
  "tilewidth":120,
  "type":"map",
