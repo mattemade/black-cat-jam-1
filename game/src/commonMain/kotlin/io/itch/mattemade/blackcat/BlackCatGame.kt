@@ -58,7 +58,7 @@ class BlackCatGame(context: Context) : ContextListener(context), Disposing by Se
     private val uiViewport = FitViewport(virtualWidth * 120, virtualHeight * 120)
     private val uiCamera = uiViewport.camera
 
-    private val assets = Assets(context)
+    private val assets = Assets(context, ::handleAnimationSignal)
 
     private var animationResetTimer: Duration = 0.milliseconds
     private val timeLimit = 2f.seconds
@@ -75,7 +75,7 @@ class BlackCatGame(context: Context) : ContextListener(context), Disposing by Se
     }
     private val cat by lazy {
             manualParallaxOrigin.set(spawn)
-            Cat(spawn, world, assets.catAnimations, controller)
+            Cat(spawn, world, assets.catAnimations, controller, ::handleAnimationSignal)
     }
 
     private val blocks = mutableListOf<Block>()
@@ -188,6 +188,18 @@ class BlackCatGame(context: Context) : ContextListener(context), Disposing by Se
                 )
             )
         }
+    }
+
+    private fun handleAnimationSignal(signal: String) {
+        println(signal)
+        when (signal) {
+            "step" -> assets.sounds.nextStep
+            "jump" -> assets.sounds.jump
+            "land" -> assets.sounds.land
+            "climb" -> assets.sounds.nextClimb
+            "attack" -> assets.sounds.attack
+            else -> null
+        }?.play()
     }
 
     private var anyKeyPressed = true

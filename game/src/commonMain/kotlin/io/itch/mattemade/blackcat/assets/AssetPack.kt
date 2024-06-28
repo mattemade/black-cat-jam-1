@@ -3,7 +3,10 @@ package io.itch.mattemade.blackcat.assets
 import com.lehaine.littlekt.AssetProvider
 import com.lehaine.littlekt.Context
 import com.lehaine.littlekt.Disposable
+import com.lehaine.littlekt.EmptyGameAssetParameter
+import com.lehaine.littlekt.GameAssetParameters
 import com.lehaine.littlekt.PreparableGameAsset
+import com.lehaine.littlekt.file.vfs.VfsFile
 import io.itch.mattemade.utils.animation.SignallingAnimationPlayer
 import io.itch.mattemade.utils.animation.readAnimationPlayer
 import io.itch.mattemade.utils.disposing.Disposing
@@ -13,7 +16,7 @@ open class AssetPack(protected val context: Context, private val defaultAnimatio
     Disposing by Self() {
 
     private val providers = mutableListOf<AssetProvider>()
-    private val provider
+    protected val provider
         get() = AssetProvider(context).also { providers += it }
 
     private var providerWasFullyLoaded = false

@@ -2,7 +2,7 @@ package io.itch.mattemade.blackcat.assets
 
 import com.lehaine.littlekt.Context
 
-class CatAnimations(context: Context) : AssetPack(context, { println(it) }) {
+class CatAnimations(context: Context, onSignal: (String) -> Unit) : AssetPack(context, onSignal) {
 
     val idle by "texture/cat/idle".prepareAnimationPlayer()
     val walk by "texture/cat/walk".prepareAnimationPlayer()

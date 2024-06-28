@@ -5,10 +5,10 @@ import com.lehaine.littlekt.file.font.ttf.TtfFontReader
 import com.lehaine.littlekt.file.vfs.readTiledMap
 import com.lehaine.littlekt.file.vfs.readTtfFont
 
-class Assets(context: Context): AssetPack(context) {
+class Assets(context: Context, onAnimationSignal: (String) -> Unit): AssetPack(context) {
 
-    val catAnimations = CatAnimations(context).packed()
+    val catAnimations = CatAnimations(context, onAnimationSignal).packed()
     val firstDay by prepare { context.resourcesVfs["maps/world2/first_day.tmj"].readTiledMap() }
-
+    val sounds = Sounds(context).packed()
 
 }

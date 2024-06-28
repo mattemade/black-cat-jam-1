@@ -30,7 +30,8 @@ class Cat(
     initialPosition: Vec2,
     world: World,
     private val animations: CatAnimations,
-    private val controller: InputMapController<GameInput>
+    private val controller: InputMapController<GameInput>,
+    private val onSignal: (String) -> Unit,
 ) : Disposing by Self(), HasContext<Body> {
 
     private val size = Vec2(444f * 16f / 1920f, 366f * 9f / 1080f) // 3.7 x 3.05
@@ -250,6 +251,9 @@ class Cat(
                 state = State.FREEFALLING
             }
         } else if (body.linearVelocityX != 0f) {
+            if (state == State.FALLING || state == State.FREEFALLING) {
+                onSignal("land")
+            }
             if (yMovement > 0) {
                 state = State.CRAWLING
             } else {
