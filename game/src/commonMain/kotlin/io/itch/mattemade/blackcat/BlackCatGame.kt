@@ -24,6 +24,7 @@ import io.itch.mattemade.blackcat.physics.ContactBits
 import io.itch.mattemade.blackcat.physics.ContactListener
 import io.itch.mattemade.blackcat.physics.Ladder
 import io.itch.mattemade.blackcat.physics.Platform
+import io.itch.mattemade.blackcat.physics.Wall
 import io.itch.mattemade.utils.disposing.Disposing
 import io.itch.mattemade.utils.disposing.Self
 import org.jbox2d.collision.shapes.CircleShape
@@ -78,6 +79,7 @@ class BlackCatGame(context: Context) : ContextListener(context), Disposing by Se
     }
 
     private val blocks = mutableListOf<Block>()
+    private val walls = mutableListOf<Wall>()
     private val platforms = mutableListOf<Platform>()
     private val ladders = mutableListOf<Ladder>()
 
@@ -98,11 +100,10 @@ class BlackCatGame(context: Context) : ContextListener(context), Disposing by Se
                 )
             }
             (assets.firstDay.layer("wall") as? TiledObjectLayer)?.objects?.forEach {
-                blocks.add(
-                    Block(
+                walls.add(
+                    Wall(
                         world,
                         it.bounds / 120f,
-                        friction = 0f
                     ) {
                         categoryBits = ContactBits.WALL_BIT
                         maskBits = ContactBits.CAT_BIT
@@ -207,11 +208,12 @@ class BlackCatGame(context: Context) : ContextListener(context), Disposing by Se
 
             if (anyKeyPressed) {
                 val isCatNearLadder = ladders.any { it.rect.intersects(cat.physicalRect) }
-                cat.update(dt, isCatNearLadder)
-                val catX = cat.x
-                val catY = cat.y
-                val cameraX = cameraBody.position.x
-                val cameraY = cameraBody.position.y
+                val isCatOnLadder = ladders.any { it.rect.contains(cat.x, cat.y) }
+                cat.update(dt, isCatNearLadder, isCatOnLadder)
+                val catX = cat.directionX
+                val catY = cat.directionY
+                val cameraX = camera.position.x
+                val cameraY = camera.position.y
                 val horizontalBox = 0f
                 val verticalBox = 0f
                 var preferredCameraX = cameraX
@@ -284,6 +286,9 @@ class BlackCatGame(context: Context) : ContextListener(context), Disposing by Se
         }
     }
 }
+
+private fun Rect.contains(x: Float, y: Float): Boolean =
+    x >= this.x && x <= this.x2 && y >= this.y && y <= this.y2
 
 private operator fun Rect.div(value: Float): Rect =
     Rect(x / value, y / value, width / value, height / value)

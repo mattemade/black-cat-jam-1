@@ -23,6 +23,7 @@ import org.jbox2d.dynamics.Filter
 import org.jbox2d.dynamics.FixtureDef
 import org.jbox2d.dynamics.World
 import kotlin.math.abs
+import kotlin.math.sign
 import kotlin.time.Duration
 
 class Cat(
@@ -35,7 +36,7 @@ class Cat(
     private val size = Vec2(444f * 16f / 1920f, 366f * 9f / 1080f) // 3.7 x 3.05
     private val hx = size.x / 2f
     private val hy = size.y / 2f
-    private val physicalSize = Vec2(size.x * 0.5f, size.y * 0.5f)
+    private val physicalSize = Vec2(size.x * 0.4f, size.y * 0.5f)
     private val textureOffset = Vec2(physicalSize.x - size.x, (physicalSize.y - size.y) / 2f + 0.15f)
     private val physicalHw = physicalSize.x / 2f
     private val physicalHh = physicalSize.y / 2f
@@ -52,10 +53,21 @@ class Cat(
 
     var platformInContact: Platform? = null
     var platformToFallThrough: Platform? = null
+    var climbingWall: Vec2? = null
     //val laddersInContact = mutableSetOf<Ladder>()
 
     val x get() = body.position.x
     val y get() = body.position.y
+    val directionX get() = x + body.linearVelocityX / 10f
+    val directionY
+        get() =
+            y + if (state == State.BACK_CLIMBING) {
+                body.linearVelocityY.sign * 1000f
+            } else if (state == State.CROUCHING || state == State.CROUCH_IDLE || state == State.CRAWLING) {
+                3f
+            } else {
+                body.linearVelocityY / 10f
+            }
     val bottom get() = body.position.y + physicalHh
     private val tempRect = Rect()
     val physicalRect: Rect get() = tempRect.set(x - physicalHw, y - physicalHw, physicalSize.x, physicalSize.y)
@@ -80,7 +92,8 @@ class Cat(
             value.restart()
             field = value
         }
-    private var facingRight = true
+    var facingRight = true
+        private set
     var state: State = State.IDLE
         private set(value) {
             if (field != value) {
@@ -97,32 +110,73 @@ class Cat(
                     State.CRAWLING -> animations.crawl
                     State.ATTACKING -> animations.attack
                     State.BACK_CLIMBING -> animations.climbback
+                    State.WALL_CLIMBING -> animations.climbwall
                 }
                 field = value
             }
         }
 
-    fun update(dt: Duration, isNearLadder: Boolean) {
+    fun update(dt: Duration, isNearLadder: Boolean, isOnLadder: Boolean) {
         val xMovement = controller.axis(GameInput.HORIZONTAL)
         val yMovement = controller.axis(GameInput.VERTICAL)
+        val climbingArea = climbingWall
 
-        if (isNearLadder/*laddersInContact.isNotEmpty()*/) {
-            if (state == State.JUMPING || state == State.FALLING || state == State.FREEFALLING) {
-                if (yMovement < 0) {
+        if (ignoringWallContactFor > Duration.ZERO) {
+            ignoringWallContactFor -= dt
+        }
+
+        if (isOnLadder/*laddersInContact.isNotEmpty()*/) {
+            if (state == State.JUMPING || state == State.FALLING || state == State.FREEFALLING || state == State.WALL_CLIMBING) {
+                if (yMovement < 0 || (state == State.WALL_CLIMBING && (facingRight && xMovement > 0f || !facingRight && xMovement < 0f))) {
                     state = State.BACK_CLIMBING
                     body.type = BodyType.STATIC
                 }
             }
-        } else {
+        } else if (state != State.BACK_CLIMBING && climbingArea != null && ignoringWallContactFor <= Duration.ZERO && (xMovement != 0f || state == State.WALL_CLIMBING)) {
+            val y = y
+            if (y > climbingArea.y || bottom < climbingArea.x) {
+                climbingWall = null
+                body.type = BodyType.DYNAMIC
+            } else if (state != State.WALL_CLIMBING) {
+                state = State.WALL_CLIMBING
+                body.type = BodyType.STATIC
+            }
+        } else if (!isNearLadder) {
+            climbingWall = null
             body.type = BodyType.DYNAMIC
         }
 
 
         if (body.type == BodyType.STATIC) {
-            updateClimbing(dt, xMovement, yMovement)
+            if (state == State.BACK_CLIMBING) {
+                if (climbingArea != null) {
+                    // TODO; if go against the wall - set the state to wall climbing and update wall climbing
+                    // updateClimbingWall(dt, xMovement, yMovement, climbingArea)
+                }
+                updateClimbing(dt, xMovement, yMovement)
+            } else if (climbingArea != null) {
+                updateClimbingWall(dt, xMovement, yMovement, climbingArea)
+            }
         } else {
             updatePlatforming(dt, xMovement, yMovement)
         }
+    }
+
+    private var ignoringWallContactFor: Duration = 0f.seconds
+
+    private fun updateClimbingWall(dt: Duration, xMovement: Float, yMovement: Float, climbingArea: Vec2) {
+        var timeMultiplier = 1.0
+        if (controller.pressed(GameInput.JUMP) || (facingRight && xMovement > 0f || !facingRight && xMovement < 0f)) {
+            climbingWall = null
+            body.type = BodyType.DYNAMIC
+            ignoringWallContactFor = 0.1f.seconds
+        } else {
+            val seconds = dt.seconds
+            timeMultiplier = (tempVec2.set(0f, yMovement).length() * 0.6f).toDouble()
+            body.position.addLocal(tempVec2.mulLocal(seconds * 6f))
+
+        }
+        currentAnimation.update(dt * timeMultiplier)
     }
 
     private fun updateClimbing(dt: Duration, xMovement: Float, yMovement: Float) {
@@ -132,9 +186,9 @@ class Cat(
         } else {
             val seconds = dt.seconds
             timeMultiplier = (tempVec2.set(xMovement, yMovement).length() * 0.6f).toDouble()
-            body.position.addLocal(tempVec2.mulLocal(seconds*6f))
-
+            body.position.addLocal(tempVec2.mulLocal(seconds * 6f))
         }
+        facingRight = xMovement < 0f
         currentAnimation.update(dt * timeMultiplier)
     }
 
@@ -265,6 +319,7 @@ class Cat(
         CRAWLING,
         ATTACKING,
         BACK_CLIMBING,
+        WALL_CLIMBING,
     }
 
 }

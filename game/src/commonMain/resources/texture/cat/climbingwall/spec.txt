@@ -1,0 +1,4 @@
+3 frames like climb.%%.png
+1..3 for 80
+2 for 80
+repeat

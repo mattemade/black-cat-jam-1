@@ -4,6 +4,7 @@ import io.itch.mattemade.blackcat.cat.Cat
 import org.jbox2d.callbacks.ContactImpulse
 import org.jbox2d.callbacks.ContactListener
 import org.jbox2d.collision.Manifold
+import org.jbox2d.common.Vec2
 import org.jbox2d.dynamics.contacts.Contact
 
 class ContactListener: ContactListener {
@@ -22,6 +23,7 @@ class ContactListener: ContactListener {
         val platform = contact.getUserData<Platform>()
         val cat = contact.getUserData<Cat>()
         val ladder = contact.getUserData<Ladder>()
+        val wall = contact.getUserData<Wall>()
         if (platform != null && cat != null) {
             if (cat.platformInContact != platform) {
                 val catLandsOnThisPlatform = (cat.state == Cat.State.FALLING || cat.state == Cat.State.FREEFALLING) && cat.bottom <= platform.rect.y
@@ -35,6 +37,10 @@ class ContactListener: ContactListener {
                     cat.platformInContact = null
                     cat.platformToFallThrough = null
                 }
+            }
+        } else if (wall != null && cat != null) {
+            if (cat.y < wall.rect.y2 && cat.y > wall.rect.y && (cat.facingRight && cat.x > wall.rect.x || !cat.facingRight && cat.x < wall.rect.x2)) {
+                cat.climbingWall = Vec2(wall.rect.y, wall.rect.y2)
             }
         }
         //println("contact! ${contact.getFixtureA()?.userData} ${contact.getFixtureB()?.userData}")
