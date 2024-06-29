@@ -39,7 +39,7 @@ class ContactListener: ContactListener {
                 }
             }
         } else if (wall != null && cat != null) {
-            if (cat.top < wall.rect.y2 && cat.bottom > wall.rect.y && (cat.facingRight && cat.x > wall.rect.x || !cat.facingRight && cat.x < wall.rect.x2)) {
+            if (cat.top < wall.rect.y2 && cat.bottom > wall.rect.y && (cat.facingLeft && cat.x > wall.rect.x || !cat.facingLeft && cat.x < wall.rect.x2)) {
                 cat.climbingWall = Vec2(wall.rect.y, wall.rect.y2)
             } else {
                 val a = 0

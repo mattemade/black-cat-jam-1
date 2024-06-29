@@ -5,6 +5,7 @@ import com.lehaine.littlekt.RemoveContextCallback
 import com.lehaine.littlekt.createLittleKtApp
 import com.lehaine.littlekt.graphics.Color
 import kotlinx.browser.document
+import kotlinx.browser.window
 import org.w3c.dom.HTMLElement
 
 private const val CANVAS_ID = "littleKtGameCanvas"
@@ -16,8 +17,28 @@ fun main() {
         canvasId = CANVAS_ID
     }.start { context ->
         scheduleCanvasResize(context)
-        BlackCatGame(context)
+        BlackCatGame(
+            context,
+            safePlayClip = {
+                play()
+                if (isSafari) {
+                    pause()
+                    play()
+                }
+            }, safePlayStream = {
+                play(loop = it)
+                if (isSafari) {
+                    pause()
+                    play(loop = it)
+                }
+            })
     }
+}
+
+private val isSafari: Boolean = window.navigator.let {
+    it.vendor.contains("Apple") &&
+            !it.userAgent.contains("CriOS") && // chrome
+            !it.userAgent.contains("FxiOS")    // firefox
 }
 
 private fun scheduleCanvasResize(context: Context) {

@@ -39,7 +39,8 @@ fun Context.bindInputs(): InputMapController<GameInput> =
         addAxis(GameInput.VERTICAL, GameInput.DOWN, GameInput.UP)
 
         addBinding(GameInput.JUMP, listOf(Key.SPACE, Key.K, Key.Z).any(), buttons = listOf(GameButton.XBOX_A))
-        addBinding(GameInput.ATTACK, listOf(Key.SHIFT_LEFT, Key.J, Key.X).any(), buttons = listOf(GameButton.XBOX_X))
+        // TODO: do we need an attack?
+        //addBinding(GameInput.ATTACK, listOf(Key.SHIFT_LEFT, Key.J, Key.X).any(), buttons = listOf(GameButton.XBOX_X))
 
         addBinding(GameInput.PAUSE, listOf(Key.P).any(), buttons = listOf(GameButton.START))
 

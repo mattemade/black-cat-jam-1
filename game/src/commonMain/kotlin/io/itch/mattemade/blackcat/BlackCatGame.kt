@@ -2,6 +2,9 @@ package io.itch.mattemade.blackcat
 
 import com.lehaine.littlekt.Context
 import com.lehaine.littlekt.ContextListener
+import com.lehaine.littlekt.audio.AudioClip
+import com.lehaine.littlekt.audio.AudioStream
+import com.lehaine.littlekt.file.Vfs
 import com.lehaine.littlekt.file.vfs.readBitmapFont
 import com.lehaine.littlekt.graph.node.resource.HAlign
 import com.lehaine.littlekt.graphics.Color
@@ -43,7 +46,7 @@ import org.jbox2d.dynamics.joints.WeldJointDef
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 
-class BlackCatGame(context: Context) : ContextListener(context), Disposing by Self() {
+class BlackCatGame(context: Context, private val safePlayClip: AudioClip.() -> Unit, private val safePlayStream: suspend AudioStream.(loop: Boolean) -> Unit) : ContextListener(context), Disposing by Self() {
 
     private val virtualWidth = 16
     private val virtualHeight = 9
@@ -191,17 +194,21 @@ class BlackCatGame(context: Context) : ContextListener(context), Disposing by Se
     }
 
     private fun handleAnimationSignal(signal: String) {
+        if (!touchedAtLeastOnce) {
+            return
+        }
         println(signal)
         when (signal) {
             "step" -> assets.sounds.nextStep
             "jump" -> assets.sounds.jump
             "land" -> assets.sounds.land
             "climb" -> assets.sounds.nextClimb
-            "attack" -> assets.sounds.attack
+            "meow" -> assets.sounds.meow
             else -> null
-        }?.play()
+        }?.safePlayClip()
     }
 
+    private var touchedAtLeastOnce = false
     private var anyKeyPressed = true
 
     override suspend fun Context.start() {
@@ -211,8 +218,25 @@ class BlackCatGame(context: Context) : ContextListener(context), Disposing by Se
         onResize { width, height ->
             viewport.update(width, height, this)
             uiViewport.update(width, height, this)
+            touchedAtLeastOnce = false
         }
         onRender { dt ->
+            if (!touchedAtLeastOnce) {
+                assets.isLoaded // to initiate loading
+
+                gl.clearColor(Color.BLACK)
+                gl.clear(ClearBufferMask.COLOR_BUFFER_BIT)
+
+                if (controller.justTouched || controller.isTouching || controller.pressed(GameInput.ANY)) {
+                    touchedAtLeastOnce = true
+                }
+
+                uiViewport.apply(this, false)
+                batch.use(uiCamera.viewProjection) {
+                    font.draw(it, "Click here or\npress any button\nto start", 0f, -240f, align = HAlign.CENTER)
+                }
+                return@onRender
+            }
             if (!assets.isLoaded) {
 
                 gl.clearColor(Color.BLACK)
@@ -220,9 +244,16 @@ class BlackCatGame(context: Context) : ContextListener(context), Disposing by Se
 
                 uiViewport.apply(this, false)
                 batch.use(uiCamera.viewProjection) {
-                    font.draw(it, "Loading...", 0f, 0f, align = HAlign.CENTER)
+                    font.draw(it, "Loading...", 0f, -60f, align = HAlign.CENTER)
                 }
                 return@onRender
+            }
+
+            if (!assets.bgMusic.playing) {
+                context.vfs.launch {
+                    assets.bgMusic.safePlayStream(true)
+                    assets.forestAmbient.safePlayStream(true)
+                }
             }
 
             gl.clearColor(Color.DARK_GRAY)
@@ -259,6 +290,7 @@ class BlackCatGame(context: Context) : ContextListener(context), Disposing by Se
 
                 world.step(dt.seconds, 6, 2)
                 camera.position.set(cameraBody.position.x, cameraBody.position.y, 0f)
+                //camera.position.set(cat.x, cat.y, 0f)
             } else {
                 animationResetTimer += dt
                 if (animationResetTimer >= timeLimit) {
