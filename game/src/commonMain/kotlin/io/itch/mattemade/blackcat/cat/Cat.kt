@@ -137,11 +137,13 @@ class Cat(
         }
 
         if (isOnLadder/*laddersInContact.isNotEmpty()*/) {
-            if (state == State.JUMPING || state == State.FALLING || state == State.FREEFALLING || state == State.WALL_CLIMBING) {
+            if (state == State.JUMPING || state == State.FALLING || state == State.FREEFALLING || state == State.WALL_CLIMBING || state == State.WALKING || state == State.IDLE || state == State.STANDING) {
                 if (yMovement < 0 || (state == State.WALL_CLIMBING && (facingLeft && xMovement > 0f || !facingLeft && xMovement < 0f))) {
                     state = State.BACK_CLIMBING
                     body.linearVelocity.set(0f, 0f)
                     body.gravityScale = 0f
+                    platformInContact = null
+                    platformToFallThrough = null
                     //body.type = BodyType.STATIC
                 }
             }
@@ -258,6 +260,7 @@ class Cat(
                         body.position,
                         true
                     )
+                    onSignal("meow")
                 }
             }
         }
@@ -365,7 +368,8 @@ class Cat(
     private fun respawn() {
         body.linearVelocity.set(0f, 0f)
         println("respawning from $x, $y")
-        currentStablePosition = (currentStablePosition + 1) % lastStablePositions.size // cycle to the last recently updated position
+        currentStablePosition =
+            (currentStablePosition + 1) % lastStablePositions.size // cycle to the last recently updated position
         println("respawning to ${lastStablePositions[currentStablePosition].x}, ${lastStablePositions[currentStablePosition].y}")
         //body.transform.set(lastStablePositions[currentStablePosition], Angle.ZERO)
         body.setTransform(lastStablePositions[currentStablePosition], Angle.ZERO)

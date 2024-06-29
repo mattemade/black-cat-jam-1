@@ -10,6 +10,6 @@ fun main() {
         backgroundColor = Color.DARK_GRAY
         title = "Black Cat Game"
     }.start {
-        BlackCatGame(it, safePlayClip = { /*play()*/ }, safePlayStream = { /*play(loop = it)*/ })
+        BlackCatGame(it, false)
     }
 }

@@ -39,13 +39,14 @@ import org.jbox2d.dynamics.BodyType
 import org.jbox2d.dynamics.Filter
 import org.jbox2d.dynamics.FixtureDef
 import org.jbox2d.dynamics.World
+import kotlin.math.max
+import kotlin.math.min
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 
 class BlackCatGame(
     context: Context,
-    private val safePlayClip: AudioClip.() -> Unit,
-    private val safePlayStream: suspend AudioStream.(loop: Boolean) -> Unit
+    private val isSafari: Boolean
 ) : ContextListener(context), Disposing by Self() {
 
     private val virtualWidth = 16
@@ -135,7 +136,7 @@ class BlackCatGame(
             assets.firstDay.combine { name, rect ->
                 println("combined a $name in $rect")
                 when (name) {
-                    "block" ->  blocks.add(
+                    "block" -> blocks.add(
                         Block(
                             world,
                             rect,
@@ -145,6 +146,7 @@ class BlackCatGame(
                             maskBits = ContactBits.CAT_BIT
                         }
                     )
+
                     "wall" -> walls.add(
                         Wall(
                             world,
@@ -154,6 +156,7 @@ class BlackCatGame(
                             maskBits = ContactBits.CAT_BIT
                         }
                     )
+
                     "death" -> blocks.add(
                         Block(
                             world,
@@ -164,18 +167,35 @@ class BlackCatGame(
                             maskBits = ContactBits.CAT_BIT
                         }
                     )
+
                     "ladder" -> ladders.add(
-                            Ladder(
-                                world,
-                                rect
-                            )
+                        Ladder(
+                            world,
+                            rect
                         )
+                    )
+
                     "platform" -> platforms.add(
                         Platform(
                             world,
                             rect
                         )
                     )
+
+                    "ladderplatform" -> {
+                        ladders.add(
+                            Ladder(
+                                world,
+                                rect
+                            )
+                        )
+                        platforms.add(
+                            Platform(
+                                world,
+                                rect
+                            )
+                        )
+                    }
                 }
             }
             (assets.firstDay.layer("platform") as? TiledObjectLayer)?.objects?.forEach {
@@ -259,13 +279,25 @@ class BlackCatGame(
             "climb" -> assets.sounds.nextClimb
             "meow" -> assets.sounds.meow
             else -> null
-        }?.safePlayClip()
+        }?.play()
     }
+
+    private val ambients by lazy {
+        listOf(
+            assets.forestAmbient,
+            assets.caveAmbient,
+            assets.mountainAmbient,
+        )
+    }
+    private var currentAmbient = 0
+    private val ambientVolume = Array(3) { if (it == currentAmbient) 1f else 0f }
+    private var musicTargetVolume = 1f
 
     private var touchedAtLeastOnce = false
     private var anyKeyPressed = true
 
     override suspend fun Context.start() {
+        println("start")
 
         val font = resourcesVfs["font/StoriaSans-Bold-120.fnt"].readBitmapFont(filter = TexMagFilter.LINEAR).disposing()
 
@@ -305,9 +337,16 @@ class BlackCatGame(
 
             if (!assets.bgMusic.playing) {
                 context.vfs.launch {
-                    assets.bgMusic.safePlayStream(true)
-                    assets.forestAmbient.safePlayStream(true)
+                    assets.bgMusic.play(loop = true, volume = musicTargetVolume)
+                    ambients.forEachIndexed { index, it ->
+                        it.play(loop = true, volume = ambientVolume[index])
+                    }
                 }
+            }
+
+            assets.bgMusic.adjustVolume(musicTargetVolume, dt, speedingFactor = 0.5f)
+            ambients.forEachIndexed { index, it ->
+                it.adjustVolume(ambientVolume[index], dt)
             }
 
             gl.clearColor(Color.BLACK)
@@ -347,26 +386,22 @@ class BlackCatGame(
 
                 if (nearCaveEntrance) {
                     if (cat.x > caveRect.x2) { // forest
+                        musicTargetVolume = 1f
                         nearCaveEntrance = false
-                        if (!assets.forestAmbient.playing) {
-                            context.vfs.launch {
-                                assets.forestAmbient.safePlayStream(true)
-                            }
-                        }
+                        changeAmbient(0)
                         disabledLayers.clear()
                         disabledLayers.add("bg_0_cave_walls")
                         disabledLayers.add("bg_0_cave_bg")
                     } else if (cat.x < caveRect.x) { // cave
+                        musicTargetVolume = 0f
                         nearCaveEntrance = false
-                        if (assets.forestAmbient.playing) {
-                            context.vfs.launch {
-                                assets.forestAmbient.pause()
-                            }
-                        }
+                        changeAmbient(1)
                         disabledLayers.clear()
                         disabledLayers.add("fg_0_grass")
                         disabledLayers.add("fg_0_cave")
                         disabledLayers.add("bg_0_ground")
+                    } else {
+                        musicTargetVolume = (cat.x - caveRect.x) / (caveRect.width)
                     }
                 } else if (caveRect.contains(cat.x, cat.y)) {
                     nearCaveEntrance = true
@@ -385,7 +420,14 @@ class BlackCatGame(
 
             uiViewport.apply(this)
             batch.use(uiCamera.viewProjection) { batch ->
-                batch.draw(Textures.white, -960f, -540f, width = 1920f, height = 1080f, colorBits = Color.LIGHT_BLUE.toFloatBits())
+                batch.draw(
+                    Textures.white,
+                    -960f,
+                    -540f,
+                    width = 1920f,
+                    height = 1080f,
+                    colorBits = Color.LIGHT_BLUE.toFloatBits()
+                )
             }
 
             viewport.apply(this)
@@ -432,6 +474,20 @@ class BlackCatGame(
         onDispose {
             dispose()
         }
+    }
+
+    private fun changeAmbient(index: Int) {
+        ambientVolume[currentAmbient] = 0f
+        currentAmbient = index
+        ambientVolume[currentAmbient] = 1f
+    }
+}
+
+fun AudioStream.adjustVolume(target: Float, dt: Duration, speedingFactor: Float = 3f) {
+    if (volume > target) {
+        volume = max(0f, volume - dt.seconds / speedingFactor)
+    } else if (volume < target) {
+        volume = min(1f, volume + dt.seconds / speedingFactor)
     }
 }
 
