@@ -3,7 +3,7 @@ agp = "8.2.0"
 kotlin = "2.0.0"
 kotlinx-html = "0.9.1"
 kotlinx-coroutines = "1.8.0"
-littlekt = "0.9.0.16837cc-SNAPSHOT" # custom build
+littlekt = "0.9.1.89f372f-SNAPSHOT" # custom build for additional support of Tiled map format
 #littlekt = "0.9.0"
 
 #little-kt core

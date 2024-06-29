@@ -6,6 +6,7 @@ import com.lehaine.littlekt.graphics.toFloatBits
 import com.lehaine.littlekt.input.InputMapController
 import com.lehaine.littlekt.math.Rect
 import com.lehaine.littlekt.util.seconds
+import com.soywiz.korma.geom.Angle
 import io.itch.mattemade.blackcat.assets.CatAnimations
 import io.itch.mattemade.blackcat.input.GameInput
 import io.itch.mattemade.blackcat.physics.ContactBits
@@ -23,7 +24,6 @@ import org.jbox2d.dynamics.Filter
 import org.jbox2d.dynamics.FixtureDef
 import org.jbox2d.dynamics.World
 import kotlin.math.abs
-import kotlin.math.sign
 import kotlin.time.Duration
 
 class Cat(
@@ -42,6 +42,9 @@ class Cat(
     private val physicalHw = physicalSize.x / 2f
     private val physicalHh = physicalSize.y / 2f
     private val tempVec2 = Vec2()
+    private val lastStablePositions = Array(5) { Vec2() }
+    private var currentStablePosition = 0
+    private var shouldRespawnOnNextUpdate = false
 
     private val body = world.createBody(
         BodyDef(
@@ -94,7 +97,7 @@ class Cat(
             value.restart()
             field = value
         }
-    var facingRight = true
+    var facingLeft = false
         private set
     var state: State = State.IDLE
         private set(value) {
@@ -117,8 +120,14 @@ class Cat(
                 field = value
             }
         }
+    var dashAvailable: Boolean = true
 
     fun update(dt: Duration, isNearLadder: Boolean, isOnLadder: Boolean) {
+        if (shouldRespawnOnNextUpdate) {
+            shouldRespawnOnNextUpdate = false
+            respawn()
+        }
+
         val xMovement = controller.axis(GameInput.HORIZONTAL)
         val yMovement = controller.axis(GameInput.VERTICAL)
         val climbingArea = climbingWall
@@ -129,7 +138,7 @@ class Cat(
 
         if (isOnLadder/*laddersInContact.isNotEmpty()*/) {
             if (state == State.JUMPING || state == State.FALLING || state == State.FREEFALLING || state == State.WALL_CLIMBING) {
-                if (yMovement < 0 || (state == State.WALL_CLIMBING && (facingRight && xMovement > 0f || !facingRight && xMovement < 0f))) {
+                if (yMovement < 0 || (state == State.WALL_CLIMBING && (facingLeft && xMovement > 0f || !facingLeft && xMovement < 0f))) {
                     state = State.BACK_CLIMBING
                     body.linearVelocity.set(0f, 0f)
                     body.gravityScale = 0f
@@ -178,7 +187,7 @@ class Cat(
 
     private fun updateClimbingWall(dt: Duration, xMovement: Float, yMovement: Float, climbingArea: Vec2) {
         var timeMultiplier = 1.0
-        if (controller.pressed(GameInput.JUMP) || (facingRight && xMovement > 0f || !facingRight && xMovement < 0f)) {
+        if (controller.pressed(GameInput.JUMP) || (facingLeft && xMovement > 0f || !facingLeft && xMovement < 0f)) {
             climbingWall = null
             body.gravityScale = 1f
             state = State.FREEFALLING
@@ -205,7 +214,7 @@ class Cat(
         }
         body.isAwake = true
         if (xMovement != 0f) {
-            facingRight = xMovement < 0f
+            facingLeft = xMovement < 0f
         }
         currentAnimation.update(dt * timeMultiplier)
     }
@@ -239,6 +248,17 @@ class Cat(
                     body.applyLinearImpulse(tempVec2.set(0f, 6f), body.position, true)
                     state = State.FREEFALLING
                 }
+            } else if (state == State.JUMPING || state == State.FALLING || state == State.FREEFALLING) {
+                // DASH
+                if (dashAvailable) {
+                    dashAvailable = false
+                    state = State.FREEFALLING
+                    body.applyLinearImpulse(
+                        tempVec2.set(if (xMovement < 0 || facingLeft) -12f else 12f, 0f),
+                        body.position,
+                        true
+                    )
+                }
             }
         }
 
@@ -247,19 +267,23 @@ class Cat(
             if (state == State.JUMPING || state == State.FALLING || state == State.FREEFALLING) {
                 state = State.FREEFALLING
                 body.applyLinearImpulse(
-                    tempVec2.set(if (xMovement < 0 || facingRight) -12f else 12f, 0f),
+                    tempVec2.set(if (xMovement < 0 || facingLeft) -12f else 12f, 0f),
                     body.position,
                     true
                 )
             } else {
+                // TODO: do we need an attack?
                 state = State.ATTACKING
             }
+            onSignal("meow")
         }
 
         if (state == State.ATTACKING) {
             // TODO do nothing?
         } else if (body.linearVelocityY < 0) {
-            state = State.JUMPING
+            if (state != State.FREEFALLING && state != State.FALLING) {
+                state = State.JUMPING
+            }
         } else if (body.linearVelocityY > 0) {
             if (state == State.JUMPING) {
                 state = State.FALLING
@@ -267,6 +291,7 @@ class Cat(
                 state = State.FREEFALLING
             }
         } else if (body.linearVelocityX != 0f) {
+            dashAvailable = true
             if (state == State.FALLING || state == State.FREEFALLING) {
                 onSignal("land")
             }
@@ -276,6 +301,7 @@ class Cat(
                 state = State.WALKING
             }
         } else { // vertical and horizontal velocity 0
+            dashAvailable = true
             if (state == State.FALLING || state == State.FREEFALLING) {
                 state = State.LANDING
             } else if (yMovement > 0) {
@@ -298,10 +324,15 @@ class Cat(
             if (currentSpeed < speedlimit) {
                 body.applyForceToCenter(tempVec2.set(xMovement * dt.seconds * 4000f, 0f))
             }
-            facingRight = xMovement < 0f
+            facingLeft = xMovement < 0f
             if (state == State.WALKING || state == State.CRAWLING) {
                 timeMultiplier = currentSpeed / 7.0
             }
+        }
+
+        if (state == State.IDLE || state == State.WALKING) {
+            lastStablePositions[currentStablePosition].set(x, y)
+            currentStablePosition = (currentStablePosition + 1) % lastStablePositions.size
         }
 
         currentAnimation.update(dt * timeMultiplier)
@@ -323,8 +354,22 @@ class Cat(
         val y = body.position.y - hy + textureOffset.y
         //batch.draw(Textures.white, x, y, width = size.x, height = size.y)
         currentAnimation.currentKeyFrame?.let { frame ->
-            batch.draw(frame, x, y, width = size.x, height = size.y, flipX = facingRight)
+            batch.draw(frame, x, y, width = size.x, height = size.y, flipX = facingLeft)
         }
+    }
+
+    fun requestRespawn() {
+        shouldRespawnOnNextUpdate = true
+    }
+
+    private fun respawn() {
+        body.linearVelocity.set(0f, 0f)
+        println("respawning from $x, $y")
+        currentStablePosition = (currentStablePosition + 1) % lastStablePositions.size // cycle to the last recently updated position
+        println("respawning to ${lastStablePositions[currentStablePosition].x}, ${lastStablePositions[currentStablePosition].y}")
+        //body.transform.set(lastStablePositions[currentStablePosition], Angle.ZERO)
+        body.setTransform(lastStablePositions[currentStablePosition], Angle.ZERO)
+        body.isAwake = true
     }
 
     enum class State {

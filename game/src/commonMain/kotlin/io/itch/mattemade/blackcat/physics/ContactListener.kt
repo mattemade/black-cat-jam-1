@@ -24,6 +24,7 @@ class ContactListener: ContactListener {
         val cat = contact.getUserData<Cat>()
         val ladder = contact.getUserData<Ladder>()
         val wall = contact.getUserData<Wall>()
+        val word = contact.getUserData<String>()
         if (platform != null && cat != null) {
             if (cat.platformInContact != platform) {
                 val catLandsOnThisPlatform = (cat.state == Cat.State.FALLING || cat.state == Cat.State.FREEFALLING) && cat.bottom <= platform.rect.y
@@ -43,6 +44,10 @@ class ContactListener: ContactListener {
                 cat.climbingWall = Vec2(wall.rect.y, wall.rect.y2)
             } else {
                 val a = 0
+            }
+        } else if (word != null && cat !== null) {
+            when (word) {
+                "death" -> cat.requestRespawn()
             }
         }
         //println("contact! ${contact.getFixtureA()?.userData} ${contact.getFixtureB()?.userData}")
