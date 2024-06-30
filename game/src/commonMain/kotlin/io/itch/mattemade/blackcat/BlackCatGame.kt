@@ -52,7 +52,7 @@ class BlackCatGame(
     private val isSafari: Boolean
 ) : ContextListener(context), Disposing by Self() {
 
-    private lateinit var gameScene: GameScene
+    private var gameScene: GameScene? = null
 
     private val assets = Assets(context, ::handleAnimationSignal)
     private fun handleAnimationSignal(signal: String) {
@@ -75,32 +75,36 @@ class BlackCatGame(
         val smallerFont =
             resourcesVfs["font/StoriaSans-Bold-60.fnt"].readBitmapFont(filter = TexMagFilter.LINEAR).disposing()
 
-        gameScene = GameScene(context, controller, font, smallerFont, isSafari, assets, ::handleAnimationSignal)
         var lastWidth = 0
         var lastHeight = 0
+
+        gameScene = GameScene(context, controller, font, smallerFont, isSafari, assets, ::handleAnimationSignal).apply {
+            resize(lastWidth, lastHeight)
+        }
 
         onResize { width, height ->
             lastWidth = width
             lastHeight = height
-            with(gameScene) {
+            gameScene?.apply {
                 resize(width, height)
             }
         }
         onRender { dt ->
             if (controller.pressed(GameInput.RESTART)) {
-                gameScene.dispose()
-                gameScene =  GameScene(context, controller, font, smallerFont, isSafari, assets, ::handleAnimationSignal)
-                with(gameScene) {
-                    resize(lastWidth, lastHeight)
+                gameScene?.apply {
+                    dispose()
+                    gameScene = GameScene(context, controller, font, smallerFont, isSafari, assets, ::handleAnimationSignal).apply {
+                        resize(lastWidth, lastHeight)
+                    }
                 }
             }
-            with(gameScene) {
+            gameScene?.apply {
                 render(dt)
             }
         }
 
         onDispose {
-            gameScene.dispose()
+            gameScene?.dispose()
             dispose()
         }
     }
