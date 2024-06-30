@@ -97,7 +97,7 @@ class Cat(
             value.restart()
             field = value
         }
-    var facingLeft = false
+    var facingLeft = true
         private set
     var state: State = State.IDLE
         private set(value) {
@@ -123,6 +123,7 @@ class Cat(
     var dashAvailable: Boolean = true
 
     fun update(dt: Duration, isNearLadder: Boolean, isOnLadder: Boolean) {
+        val fakeLanding = shouldRespawnOnNextUpdate
         if (shouldRespawnOnNextUpdate) {
             shouldRespawnOnNextUpdate = false
             respawn()
@@ -181,7 +182,7 @@ class Cat(
                 updateClimbingWall(dt, xMovement, yMovement, climbingArea)
             }
         } else {
-            updatePlatforming(dt, xMovement, yMovement)
+            updatePlatforming(dt, xMovement, yMovement, fakeLanding)
         }
     }
 
@@ -221,7 +222,7 @@ class Cat(
         currentAnimation.update(dt * timeMultiplier)
     }
 
-    private fun updatePlatforming(dt: Duration, xMovement: Float, yMovement: Float) {
+    private fun updatePlatforming(dt: Duration, xMovement: Float, yMovement: Float, fakeLanding: Boolean) {
         var timeMultiplier = 1.0
 
         platformInContact?.let { platform ->
@@ -260,7 +261,7 @@ class Cat(
                         body.position,
                         true
                     )
-                    onSignal("meow")
+                    onSignal("dash")
                 }
             }
         }
@@ -278,7 +279,7 @@ class Cat(
                 // TODO: do we need an attack?
                 state = State.ATTACKING
             }
-            onSignal("meow")
+            onSignal("dash")
         }
 
         if (state == State.ATTACKING) {
@@ -306,7 +307,11 @@ class Cat(
         } else { // vertical and horizontal velocity 0
             dashAvailable = true
             if (state == State.FALLING || state == State.FREEFALLING) {
-                state = State.LANDING
+                if (fakeLanding) {
+                    state = State.IDLE
+                } else {
+                    state = State.LANDING
+                }
             } else if (yMovement > 0) {
                 if (state == State.CRAWLING) {
                     state = State.CROUCH_IDLE
@@ -363,6 +368,7 @@ class Cat(
 
     fun requestRespawn() {
         shouldRespawnOnNextUpdate = true
+        onSignal("death")
     }
 
     private fun respawn() {

@@ -2,7 +2,6 @@ package io.itch.mattemade.blackcat
 
 import com.lehaine.littlekt.Context
 import com.lehaine.littlekt.ContextListener
-import com.lehaine.littlekt.audio.AudioClip
 import com.lehaine.littlekt.audio.AudioStream
 import com.lehaine.littlekt.file.vfs.readBitmapFont
 import com.lehaine.littlekt.graph.node.resource.HAlign
@@ -18,6 +17,7 @@ import com.lehaine.littlekt.graphics.toFloatBits
 import com.lehaine.littlekt.math.Rect
 import com.lehaine.littlekt.util.seconds
 import com.lehaine.littlekt.util.viewport.FitViewport
+import com.soywiz.korma.geom.Angle
 import io.itch.mattemade.blackcat.assets.Assets
 import io.itch.mattemade.blackcat.cat.Cat
 import io.itch.mattemade.blackcat.input.GameInput
@@ -86,6 +86,8 @@ class BlackCatGame(
     private val walls = mutableListOf<Wall>()
     private val platforms = mutableListOf<Platform>()
     private val ladders = mutableListOf<Ladder>()
+    private val cameraZones = mutableListOf<Rect>()
+    private var targetZoom = 0f
 
     private var nearCaveEntrance: Boolean = false
     private var caveRect: Rect = Rect()
@@ -96,6 +98,9 @@ class BlackCatGame(
             destroyBody(it as Body)
         }.apply {
             setContactListener(ContactListener())
+            (assets.firstDay.layer("camera") as? TiledObjectLayer)?.objects?.firstOrNull()?.let {
+                cameraZones.add(it.bounds / 120f)
+            }
             (assets.firstDay.layer("cave") as? TiledObjectLayer)?.objects?.firstOrNull()?.let {
                 caveRect = it.bounds / 120f
             }
@@ -273,11 +278,12 @@ class BlackCatGame(
         }
         println(signal)
         when (signal) {
-            "step" -> assets.sounds.nextStep
+            "step" -> assets.sounds.step.next
             "jump" -> assets.sounds.jump
             "land" -> assets.sounds.land
-            "climb" -> assets.sounds.nextClimb
-            "meow" -> assets.sounds.meow
+            "climb" -> assets.sounds.climb.next
+            "dash" -> assets.sounds.dash
+            "death" -> assets.sounds.death.next
             else -> null
         }?.play()
     }
@@ -358,30 +364,10 @@ class BlackCatGame(
                 val isCatNearLadder = ladders.any { it.rect.intersects(cat.physicalRect) }
                 val isCatOnLadder = ladders.any { it.rect.contains(cat.x, cat.y) }
                 cat.update(dt, isCatNearLadder, isCatOnLadder)
-                val catX = cat.directionX
-                val catY = cat.directionY
-                val cameraX = camera.position.x
-                val cameraY = camera.position.y
-                val horizontalBox = 0f
-                val verticalBox = 0f
-                var preferredCameraX = cameraX
-                var preferredCameraY = cameraY
-
-                if (catX > cameraX + horizontalBox) {
-                    preferredCameraX = catX - horizontalBox
-                } else if (catX < cameraX - horizontalBox) {
-                    preferredCameraX = catX + horizontalBox
-                }
-                if (catY > cameraY + verticalBox) {
-                    preferredCameraY = catY - verticalBox
-                } else if (catY < cameraY - verticalBox) {
-                    preferredCameraY = catY + verticalBox
-                }
-                tempVec2.set(preferredCameraX - cameraX, preferredCameraY - cameraY).mulLocal(tempVec2.length())
-                cameraBody.linearVelocity.set(tempVec2)
-                cameraBody.isAwake = true
+                updateCameraBodyPosition()
 
                 world.step(dt.seconds, 6, 2)
+
                 camera.position.set(cameraBody.position.x, cameraBody.position.y, 0f)
 
                 if (nearCaveEntrance) {
@@ -422,9 +408,9 @@ class BlackCatGame(
             batch.use(uiCamera.viewProjection) { batch ->
                 batch.draw(
                     Textures.white,
-                    -960f,
+                    -1000f,
                     -540f,
-                    width = 1920f,
+                    width = 2000f,
                     height = 1080f,
                     colorBits = Color.LIGHT_BLUE.toFloatBits()
                 )
@@ -474,6 +460,43 @@ class BlackCatGame(
         onDispose {
             dispose()
         }
+    }
+
+    private fun updateCameraBodyPosition() {
+        cameraZones.firstOrNull {
+            it.contains(cat.x, cat.y)
+        }?.let { zone ->
+            viewport.virtualWidth = zone.width
+            viewport.virtualHeight = zone.height
+            cameraBody.setTransform(tempVec2.set((zone.x + zone.x2)/ 2f, (zone.y + zone.y2)/ 2f), Angle.ZERO)
+            cameraBody.isAwake = false
+            return
+        } ?: run {
+            viewport.virtualWidth = virtualWidth.toFloat()
+            viewport.virtualHeight = virtualHeight.toFloat()
+        }
+        val catX = cat.directionX
+        val catY = cat.directionY
+        val cameraX = camera.position.x
+        val cameraY = camera.position.y
+        val horizontalBox = 0f
+        val verticalBox = 0f
+        var preferredCameraX = cameraX
+        var preferredCameraY = cameraY
+
+        if (catX > cameraX + horizontalBox) {
+            preferredCameraX = catX - horizontalBox
+        } else if (catX < cameraX - horizontalBox) {
+            preferredCameraX = catX + horizontalBox
+        }
+        if (catY > cameraY + verticalBox) {
+            preferredCameraY = catY - verticalBox
+        } else if (catY < cameraY - verticalBox) {
+            preferredCameraY = catY + verticalBox
+        }
+        tempVec2.set(preferredCameraX - cameraX, preferredCameraY - cameraY).mulLocal(tempVec2.length())
+        cameraBody.linearVelocity.set(tempVec2)
+        cameraBody.isAwake = true
     }
 
     private fun changeAmbient(index: Int) {
