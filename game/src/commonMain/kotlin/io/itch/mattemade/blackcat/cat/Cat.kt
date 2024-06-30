@@ -151,14 +151,14 @@ class Cat(
             }
         }
 
-        if (state != State.BACK_CLIMBING && climbingArea != null && ignoringWallContactFor <= Duration.ZERO && (xMovement != 0f || state == State.WALL_CLIMBING)) {
+        if (state != State.BACK_CLIMBING && climbingArea != null && ignoringWallContactFor <= Duration.ZERO && ((facingLeft && xMovement < 0f || !facingLeft && xMovement > 0f) || state == State.WALL_CLIMBING)) {
             val y = y
             if (top > climbingArea.y || bottom < climbingArea.x) {
                 climbingWall = null
                 body.gravityScale = 1f
                 dashAvailable = true
                 state = State.FREEFALLING
-                body.applyLinearImpulse(tempVec2.set(if (facingLeft) -5f else 5f, 6f), body.worldCenter, true)
+                body.applyLinearImpulse(tempVec2.set(if (facingLeft) -6f else 6f, 8f), body.worldCenter, true)
                 // body.type = BodyType.DYNAMIC
             } else if (state != State.WALL_CLIMBING) {
                 state = State.WALL_CLIMBING
@@ -195,7 +195,7 @@ class Cat(
 
     private fun updateClimbingWall(dt: Duration, xMovement: Float, yMovement: Float, climbingArea: Vec2) {
         var timeMultiplier = 1.0
-        if (controller.pressed(GameInput.JUMP) || (facingLeft && xMovement > 0f || !facingLeft && xMovement < 0f)) {
+        if (controller.pressed(GameInput.JUMP) /*|| (facingLeft && xMovement > 0f || !facingLeft && xMovement < 0f)*/) {
             climbingWall = null
             body.gravityScale = 1f
             if (yMovement <= 0f) {

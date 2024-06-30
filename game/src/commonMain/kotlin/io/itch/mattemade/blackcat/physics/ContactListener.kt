@@ -39,11 +39,9 @@ class ContactListener: ContactListener {
                     cat.platformToFallThrough = null
                 }
             }
-        } else if (wall != null && cat != null) {
+        } else if (wall != null && cat != null && cat.state != Cat.State.WALL_CLIMBING) {
             if (cat.top < wall.rect.y2 && cat.bottom > wall.rect.y && (cat.facingLeft && cat.x > wall.rect.x || !cat.facingLeft && cat.x < wall.rect.x2)) {
                 cat.climbingWall = Vec2(wall.rect.y, wall.rect.y2)
-            } else {
-                val a = 0
             }
         } else if (word != null && cat !== null) {
             when (word) {

@@ -311,6 +311,9 @@ class BlackCatGame(
     private var currentAmbient = 0
     private val ambientVolume = Array(3) { if (it == currentAmbient) 1f else 0f }
     private var musicTargetVolume = 1f
+        set(value) {
+            field = value
+        }
 
     private var touchedAtLeastOnce = false
     private var anyKeyPressed = true
@@ -419,7 +422,7 @@ class BlackCatGame(
 
                 if (nearCaveEntrance) {
                     if (caveRects.all { cat.y > it.y2 || cat.y < it.y || cat.x > it.x2 }) { // forest
-                        musicTargetVolume = 1f
+                        musicTargetVolume = min(1f, max(0f, (cat.y - finish.y) / (spawn.y - finish.y)))
                         nearCaveEntrance = false
                         changeAmbient(0)
                         disabledLayers.clear()
@@ -434,12 +437,19 @@ class BlackCatGame(
                         disabledLayers.add("fg_0_cave")
                         disabledLayers.add("bg_0_ground")
                     } else {
+                        musicTargetVolume = min(1f, max(0f, (cat.y - finish.y) / (spawn.y - finish.y)))
                         //musicTargetVolume = (cat.x - caveRect.x) / (caveRect.width)
                     }
                 } else if (caveRects.any { it.contains(cat.x, cat.y) }) {
+                    musicTargetVolume = min(1f, max(0f, (cat.y - finish.y) / (spawn.y - finish.y)))
                     nearCaveEntrance = true
                     disabledLayers.clear()
                     //disabledLayers.add("fg_0_grass")
+                } else if (disabledLayers.size == 2) { // terrible way to check if we are outside
+                    val finishRatio = min(1f, max(0f, (cat.y - finish.y) / (spawn.y - finish.y)))
+                    musicTargetVolume = finishRatio*finishRatio
+                    ambientVolume[0] = finishRatio
+                    ambientVolume[2] = 1f - finishRatio
                 }
                 //camera.position.set(cat.x, cat.y, 0f)
             } else {
@@ -507,7 +517,7 @@ class BlackCatGame(
             batch.use(uiCamera.viewProjection) { batch ->
                 if (bestTime != 0L) {
                     val formatted = formattedTime(internalTimer.inWholeMilliseconds)
-                    assets.monoFont.draw(batch, "$formatted / $bestTimeText", x = -960f, y = -540f)
+                    assets.monoFont.draw(batch, "$formatted / $bestTimeText", x = -950f, y = -540f)
                 }
                 if (gameFinished) {
                     val formatted = formattedTime(internalTimer.inWholeMilliseconds)
