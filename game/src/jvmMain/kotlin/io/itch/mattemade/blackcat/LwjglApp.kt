@@ -10,6 +10,6 @@ fun main() {
         backgroundColor = Color.DARK_GRAY
         title = "Black Cat Game"
     }.start {
-        BlackCatGame(it, false)
+        BlackCatGame(it, true)
     }
 }

@@ -15,6 +15,7 @@ import com.lehaine.littlekt.graphics.gl.ClearBufferMask
 import com.lehaine.littlekt.graphics.gl.TexMagFilter
 import com.lehaine.littlekt.graphics.toFloatBits
 import com.lehaine.littlekt.math.Rect
+import com.lehaine.littlekt.util.milliseconds
 import com.lehaine.littlekt.util.seconds
 import com.lehaine.littlekt.util.viewport.FitViewport
 import com.soywiz.korma.geom.Angle
@@ -66,6 +67,7 @@ class BlackCatGame(
 
     private var animationResetTimer: Duration = 0.milliseconds
     private val timeLimit = 2f.seconds
+    private var internalTimer: Duration = Duration.ZERO
 
     private var cameraOffsetX = 0f
     private var cameraOffsetY = 0f
@@ -87,22 +89,30 @@ class BlackCatGame(
     private val platforms = mutableListOf<Platform>()
     private val ladders = mutableListOf<Ladder>()
     private val cameraZones = mutableListOf<Rect>()
-    private var targetZoom = 0f
+    private val dangerZones = mutableListOf<Rect>()
+    private val finish = Rect()
 
     private var nearCaveEntrance: Boolean = false
-    private var caveRect: Rect = Rect()
-    private val disabledLayers = mutableSetOf<String>()
+    private var caveRects = mutableListOf<Rect>()
+    private val disabledLayers = mutableSetOf<String>().apply {
+        /*add("fg_0_grass")
+        add("fg_0_cave")
+        add("bg_0_ground")*/
+    }
 
     private val world by lazy {
         World(gravity = Vec2(x = 0f, y = 40f)).registerAsContextDisposer(Body::class) {
             destroyBody(it as Body)
         }.apply {
             setContactListener(ContactListener())
-            (assets.firstDay.layer("camera") as? TiledObjectLayer)?.objects?.firstOrNull()?.let {
+            (assets.firstDay.layer("camera") as? TiledObjectLayer)?.objects?.forEach {
                 cameraZones.add(it.bounds / 120f)
             }
-            (assets.firstDay.layer("cave") as? TiledObjectLayer)?.objects?.firstOrNull()?.let {
-                caveRect = it.bounds / 120f
+            (assets.firstDay.layer("danger") as? TiledObjectLayer)?.objects?.forEach {
+                dangerZones.add(it.bounds / 120f)
+            }
+            (assets.firstDay.layer("cave") as? TiledObjectLayer)?.objects?.forEach {
+                caveRects.add(it.bounds / 120f)
             }
             (assets.firstDay.layer("floor") as? TiledObjectLayer)?.objects?.forEach {
                 blocks.add(
@@ -139,7 +149,6 @@ class BlackCatGame(
                 )
             }
             assets.firstDay.combine { name, rect ->
-                println("combined a $name in $rect")
                 when (name) {
                     "block" -> blocks.add(
                         Block(
@@ -220,6 +229,11 @@ class BlackCatGame(
                 )
             }
             assets.firstDay.layers.forEach { it.visible = true }
+
+            (assets.firstDay.layer("finish") as? TiledObjectLayer)?.objects?.firstOrNull()?.let {
+                val rect = it.bounds / 120f
+                finish.set(rect.x, rect.y, rect.width, rect.height)
+            }
         }
     }
 
@@ -276,7 +290,6 @@ class BlackCatGame(
         if (!touchedAtLeastOnce) {
             return
         }
-        println(signal)
         when (signal) {
             "step" -> assets.sounds.step.next
             "jump" -> assets.sounds.jump
@@ -301,11 +314,25 @@ class BlackCatGame(
 
     private var touchedAtLeastOnce = false
     private var anyKeyPressed = true
+    private var gameFinished = false
+    private var bestTime = 0L
+    private var bestTimeText = ""
+    private var name = "AAAAA"
 
     override suspend fun Context.start() {
-        println("start")
 
         val font = resourcesVfs["font/StoriaSans-Bold-120.fnt"].readBitmapFont(filter = TexMagFilter.LINEAR).disposing()
+        val smallerFont =
+            resourcesVfs["font/StoriaSans-Bold-60.fnt"].readBitmapFont(filter = TexMagFilter.LINEAR).disposing()
+        storageVfs["store"].readKeystore()?.split("\n")?.forEachIndexed { index, line ->
+            when (index) {
+                0 -> {
+                    bestTime = line.toLong()
+                    bestTimeText = formattedTime(bestTime)
+                }
+                1 -> name = line
+            }
+        }
 
         onResize { width, height ->
             viewport.update(width, height, this)
@@ -325,6 +352,9 @@ class BlackCatGame(
 
                 uiViewport.apply(this, false)
                 batch.use(uiCamera.viewProjection) {
+                    if (isSafari) {
+                        smallerFont.draw(it, "sound may not work in Safari", 0f, -480f, align = HAlign.CENTER)
+                    }
                     font.draw(it, "Click here or\npress any button\nto start", 0f, -240f, align = HAlign.CENTER)
                 }
                 return@onRender
@@ -363,22 +393,39 @@ class BlackCatGame(
             if (anyKeyPressed) {
                 val isCatNearLadder = ladders.any { it.rect.intersects(cat.physicalRect) }
                 val isCatOnLadder = ladders.any { it.rect.contains(cat.x, cat.y) }
-                cat.update(dt, isCatNearLadder, isCatOnLadder)
+                val isDanger = dangerZones.any { it.contains(cat.x, cat.y) }
+                cat.update(dt, isCatNearLadder, isCatOnLadder, isDanger)
                 updateCameraBodyPosition()
 
                 world.step(dt.seconds, 6, 2)
 
+                if (!gameFinished) {
+                    if (finish.contains(cat.x, cat.y)) {
+                        gameFinished = true
+                        val bestTime = if (bestTime == 0L) internalTimer.inWholeMilliseconds else min(
+                            bestTime,
+                            internalTimer.inWholeMilliseconds
+                        )
+                        //bestTimeText = formattedTime(bestTime)
+                        vfs.launch {
+                            storageVfs["store"].writeKeystore("$bestTime\n$name")
+                        }
+                    } else {
+                        internalTimer += dt
+                    }
+                }
+
                 camera.position.set(cameraBody.position.x, cameraBody.position.y, 0f)
 
                 if (nearCaveEntrance) {
-                    if (cat.x > caveRect.x2) { // forest
+                    if (caveRects.all { cat.y > it.y2 || cat.y < it.y || cat.x > it.x2 }) { // forest
                         musicTargetVolume = 1f
                         nearCaveEntrance = false
                         changeAmbient(0)
                         disabledLayers.clear()
                         disabledLayers.add("bg_0_cave_walls")
                         disabledLayers.add("bg_0_cave_bg")
-                    } else if (cat.x < caveRect.x) { // cave
+                    } else if (caveRects.all { cat.y > it.y2 || cat.y < it.y || cat.x < it.x }) { // cave
                         musicTargetVolume = 0f
                         nearCaveEntrance = false
                         changeAmbient(1)
@@ -387,9 +434,9 @@ class BlackCatGame(
                         disabledLayers.add("fg_0_cave")
                         disabledLayers.add("bg_0_ground")
                     } else {
-                        musicTargetVolume = (cat.x - caveRect.x) / (caveRect.width)
+                        //musicTargetVolume = (cat.x - caveRect.x) / (caveRect.width)
                     }
-                } else if (caveRect.contains(cat.x, cat.y)) {
+                } else if (caveRects.any { it.contains(cat.x, cat.y) }) {
                     nearCaveEntrance = true
                     disabledLayers.clear()
                     //disabledLayers.add("fg_0_grass")
@@ -455,11 +502,33 @@ class BlackCatGame(
                     }
                 }
             }
+
+            uiViewport.apply(this)
+            batch.use(uiCamera.viewProjection) { batch ->
+                if (bestTime != 0L) {
+                    val formatted = formattedTime(internalTimer.inWholeMilliseconds)
+                    assets.monoFont.draw(batch, "$formatted / $bestTimeText", x = -960f, y = -540f)
+                }
+                if (gameFinished) {
+                    val formatted = formattedTime(internalTimer.inWholeMilliseconds)
+                    font.draw(batch, "Congratulations!\nYou've finished the game in $formatted!\nRefresh the page to beat your score", 0f, -240f, align = HAlign.CENTER)
+                }
+            }
         }
 
         onDispose {
             dispose()
         }
+    }
+
+    private fun formattedTime(totalMilliseconds: Long): String {
+        //val totalMilliseconds = internalTimer.inWholeMilliseconds
+        val millis = totalMilliseconds % 1000L
+        val seconds = (totalMilliseconds / 1000L) % 60
+        val minutes = (totalMilliseconds / 1000L) / 60
+        val formatted =
+            "${if (minutes < 10) "0$minutes" else minutes}:${if (seconds < 10) "0$seconds" else seconds}.${if (millis < 10) "00$millis" else if (millis < 100) "0$millis" else millis}"
+        return formatted
     }
 
     private fun updateCameraBodyPosition() {
@@ -468,7 +537,7 @@ class BlackCatGame(
         }?.let { zone ->
             viewport.virtualWidth = zone.width
             viewport.virtualHeight = zone.height
-            cameraBody.setTransform(tempVec2.set((zone.x + zone.x2)/ 2f, (zone.y + zone.y2)/ 2f), Angle.ZERO)
+            cameraBody.setTransform(tempVec2.set((zone.x + zone.x2) / 2f, (zone.y + zone.y2) / 2f), Angle.ZERO)
             cameraBody.isAwake = false
             return
         } ?: run {

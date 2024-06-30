@@ -34,9 +34,7 @@ internal class Self : Disposing {
 
     override fun dispose() {
         disposables.forEach {
-            println("Disposing $it")
             if (it is HasContext<*>) {
-                println("Disposing $it's context")
                 it.context.forEach { (clazz, context) ->
                     contextDisposers[clazz]?.invoke(context)
                 }

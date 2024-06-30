@@ -16,7 +16,6 @@ fun main() {
         backgroundColor = Color.DARK_GRAY
         canvasId = CANVAS_ID
     }.start { context ->
-        println("starting")
         scheduleCanvasResize(context)
         BlackCatGame(
             context,

@@ -216,6 +216,32 @@
              "x":0,
              "y":0
             }
+        }, 
+        {
+         "id":18,
+         "objectgroup":
+            {
+             "draworder":"index",
+             "id":2,
+             "name":"",
+             "objects":[
+                    {
+                     "height":120,
+                     "id":1,
+                     "name":"ladderplatform",
+                     "rotation":0,
+                     "type":"",
+                     "visible":true,
+                     "width":120,
+                     "x":0,
+                     "y":0
+                    }],
+             "opacity":1,
+             "type":"objectgroup",
+             "visible":true,
+             "x":0,
+             "y":0
+            }
         }],
  "tilewidth":120,
  "type":"tileset",

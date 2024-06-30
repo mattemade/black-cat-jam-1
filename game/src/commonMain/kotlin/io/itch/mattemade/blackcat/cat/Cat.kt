@@ -45,6 +45,7 @@ class Cat(
     private val lastStablePositions = Array(5) { Vec2() }
     private var currentStablePosition = 0
     private var shouldRespawnOnNextUpdate = false
+    private var jumpingTimeLeft = 0f
 
     private val body = world.createBody(
         BodyDef(
@@ -120,9 +121,9 @@ class Cat(
                 field = value
             }
         }
-    var dashAvailable: Boolean = true
+    private var dashAvailable: Boolean = true
 
-    fun update(dt: Duration, isNearLadder: Boolean, isOnLadder: Boolean) {
+    fun update(dt: Duration, isNearLadder: Boolean, isOnLadder: Boolean, isDanger: Boolean) {
         val fakeLanding = shouldRespawnOnNextUpdate
         if (shouldRespawnOnNextUpdate) {
             shouldRespawnOnNextUpdate = false
@@ -137,7 +138,7 @@ class Cat(
             ignoringWallContactFor -= dt
         }
 
-        if (isOnLadder/*laddersInContact.isNotEmpty()*/) {
+        if (isOnLadder/*laddersInContact.isNotEmpty()*/ && !controller.down(GameInput.JUMP)) {
             if (state == State.JUMPING || state == State.FALLING || state == State.FREEFALLING || state == State.WALL_CLIMBING || state == State.WALKING || state == State.IDLE || state == State.STANDING) {
                 if (yMovement < 0 || (state == State.WALL_CLIMBING && (facingLeft && xMovement > 0f || !facingLeft && xMovement < 0f))) {
                     state = State.BACK_CLIMBING
@@ -148,12 +149,16 @@ class Cat(
                     //body.type = BodyType.STATIC
                 }
             }
-        } else if (state != State.BACK_CLIMBING && climbingArea != null && ignoringWallContactFor <= Duration.ZERO && (xMovement != 0f || state == State.WALL_CLIMBING)) {
+        }
+
+        if (state != State.BACK_CLIMBING && climbingArea != null && ignoringWallContactFor <= Duration.ZERO && (xMovement != 0f || state == State.WALL_CLIMBING)) {
             val y = y
             if (top > climbingArea.y || bottom < climbingArea.x) {
                 climbingWall = null
                 body.gravityScale = 1f
+                dashAvailable = true
                 state = State.FREEFALLING
+                body.applyLinearImpulse(tempVec2.set(if (facingLeft) -5f else 5f, 6f), body.worldCenter, true)
                 // body.type = BodyType.DYNAMIC
             } else if (state != State.WALL_CLIMBING) {
                 state = State.WALL_CLIMBING
@@ -182,7 +187,7 @@ class Cat(
                 updateClimbingWall(dt, xMovement, yMovement, climbingArea)
             }
         } else {
-            updatePlatforming(dt, xMovement, yMovement, fakeLanding)
+            updatePlatforming(dt, xMovement, yMovement, fakeLanding, isDanger)
         }
     }
 
@@ -193,7 +198,13 @@ class Cat(
         if (controller.pressed(GameInput.JUMP) || (facingLeft && xMovement > 0f || !facingLeft && xMovement < 0f)) {
             climbingWall = null
             body.gravityScale = 1f
-            state = State.FREEFALLING
+            if (yMovement <= 0f) {
+                state = State.JUMPING
+                jumpingTimeLeft = 0.2f
+            } else {
+                state = State.FREEFALLING
+            }
+            dashAvailable = true
             ignoringWallContactFor = 0.1f.seconds
         } else {
             val seconds = dt.seconds
@@ -209,7 +220,13 @@ class Cat(
         var timeMultiplier = 1.0
         if (controller.pressed(GameInput.JUMP)) {
             body.gravityScale = 1f
-            state = State.FREEFALLING
+            if (yMovement <= 0f) {
+                state = State.JUMPING
+                jumpingTimeLeft = 0.2f
+            } else {
+                state = State.FREEFALLING
+            }
+            dashAvailable = true
         } else {
             val seconds = dt.seconds
             timeMultiplier = (tempVec2.set(xMovement, yMovement).length() * 0.6f).toDouble()
@@ -222,7 +239,7 @@ class Cat(
         currentAnimation.update(dt * timeMultiplier)
     }
 
-    private fun updatePlatforming(dt: Duration, xMovement: Float, yMovement: Float, fakeLanding: Boolean) {
+    private fun updatePlatforming(dt: Duration, xMovement: Float, yMovement: Float, fakeLanding: Boolean, isDanger: Boolean) {
         var timeMultiplier = 1.0
 
         platformInContact?.let { platform ->
@@ -237,10 +254,14 @@ class Cat(
             }
         }
 
+
         if (controller.pressed(GameInput.JUMP)) {
             if (state == State.WALKING || state == State.IDLE || state == State.LANDING) {
-                body.applyLinearImpulse(tempVec2.set(0f, -16f), body.position, true)
+                //body.applyLinearImpulse(tempVec2.set(0f, -16f), body.position, true)
+                body.linearVelocityY = -16f
                 state = State.JUMPING
+                jumpingTimeLeft = 0.2f
+                dashAvailable = true
                 platformInContact = null
                 platformToFallThrough = null
             } else if (state == State.CROUCHING || state == State.CROUCH_IDLE || state == State.CRAWLING) {
@@ -264,6 +285,12 @@ class Cat(
                     onSignal("dash")
                 }
             }
+        } else if (controller.down(GameInput.JUMP) && state == State.JUMPING) {
+            jumpingTimeLeft -= dt.seconds
+            if (jumpingTimeLeft > 0) {
+                body.linearVelocityY = -12f
+            }
+            // continue jumping if you can
         }
 
 
@@ -295,7 +322,6 @@ class Cat(
                 state = State.FREEFALLING
             }
         } else if (body.linearVelocityX != 0f) {
-            dashAvailable = true
             if (state == State.FALLING || state == State.FREEFALLING) {
                 onSignal("land")
             }
@@ -305,7 +331,6 @@ class Cat(
                 state = State.WALKING
             }
         } else { // vertical and horizontal velocity 0
-            dashAvailable = true
             if (state == State.FALLING || state == State.FREEFALLING) {
                 if (fakeLanding) {
                     state = State.IDLE
@@ -338,7 +363,7 @@ class Cat(
             }
         }
 
-        if (state == State.IDLE || state == State.WALKING) {
+        if (!isDanger && (state == State.IDLE || state == State.WALKING)) {
             lastStablePositions[currentStablePosition].set(x, y)
             currentStablePosition = (currentStablePosition + 1) % lastStablePositions.size
         }
@@ -372,11 +397,13 @@ class Cat(
     }
 
     private fun respawn() {
+        state = State.IDLE
+        climbingWall = null
+        platformInContact = null
+        platformToFallThrough = null
         body.linearVelocity.set(0f, 0f)
-        println("respawning from $x, $y")
         currentStablePosition =
             (currentStablePosition + 1) % lastStablePositions.size // cycle to the last recently updated position
-        println("respawning to ${lastStablePositions[currentStablePosition].x}, ${lastStablePositions[currentStablePosition].y}")
         //body.transform.set(lastStablePositions[currentStablePosition], Angle.ZERO)
         body.setTransform(lastStablePositions[currentStablePosition], Angle.ZERO)
         body.isAwake = true
