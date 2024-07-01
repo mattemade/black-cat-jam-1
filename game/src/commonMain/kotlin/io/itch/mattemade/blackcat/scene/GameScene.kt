@@ -46,7 +46,7 @@ import kotlin.math.min
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 
-class GameScene(private val context: Context, private val controller: InputMapController<GameInput>, private val font: BitmapFont, private val smallerFont: BitmapFont, private val isSafari: Boolean, private val assets: Assets, private val handleAnimationSignals: (String) -> Unit): Disposing by Self() {
+class GameScene(private val context: Context, private val controller: InputMapController<GameInput>, private val font: BitmapFont, private val smallerFont: BitmapFont, private val isSafari: Boolean, private val assets: Assets, private val initialIgnoreFirstResize: Boolean, private val handleAnimationSignals: (String) -> Unit): Disposing by Self() {
 
 
     private val virtualWidth = 16
@@ -317,7 +317,7 @@ class GameScene(private val context: Context, private val controller: InputMapCo
             field = value
         }
 
-    private var touchedAtLeastOnce = false
+    private var touchedAtLeastOnce = true // default true since we had some touches in slideshow
     private var anyKeyPressed = true
     private var gameFinished = false
     private var bestTime = 0L
@@ -329,10 +329,16 @@ class GameScene(private val context: Context, private val controller: InputMapCo
 
     }
 
+    private var ignoreFirstResize = initialIgnoreFirstResize
+
     fun Context.resize(width: Int, height: Int) {
         viewport.update(width, height, this)
         uiViewport.update(width, height, this)
-        touchedAtLeastOnce = false
+        if (ignoreFirstResize) {
+            ignoreFirstResize = false
+        } else {
+            touchedAtLeastOnce = false
+        }
     }
 
     fun Context.render(dt: Duration) {
@@ -342,7 +348,7 @@ class GameScene(private val context: Context, private val controller: InputMapCo
             gl.clearColor(Color.BLACK)
             gl.clear(ClearBufferMask.COLOR_BUFFER_BIT)
 
-            if (controller.justTouched || controller.isTouching || controller.pressed(GameInput.ANY)) {
+            if (controller.justTouched || controller.pressed(GameInput.ANY)) {
                 touchedAtLeastOnce = true
             }
 
@@ -351,7 +357,7 @@ class GameScene(private val context: Context, private val controller: InputMapCo
                 if (isSafari) {
                     smallerFont.draw(it, "sound may not work in Safari", 0f, -480f, align = HAlign.CENTER)
                 }
-                font.draw(it, "Click here or\npress any button\nto start", 0f, -240f, align = HAlign.CENTER)
+                font.draw(it, "Click here or\npress any button\nto resume", 0f, -240f, align = HAlign.CENTER)
             }
             return
         }
