@@ -1,23 +1,16 @@
-# Black Cat Game for Black Cat Jam #1
+# [Black Cat Game](https://mattemade.itch.io/pelican-valley) for the [Black Cat Jam #1](https://itch.io/jam/black-cat-jam-1/rate/2801669)
 
-## Plan
+Made in 5 days (roughly 30 hours of dev time).
 
-| Day | Hs | TODO list                                                     | Done |
-|-----|----|---------------------------------------------------------------|------|
-| Tue | 2  | make a plan, communicate                                      |      |
-| Wed | 6  |                                                               |      |
-| Thu | 6  |                                                               |      |
-| Fri | 6  |                                                               |      |
-| Sat | 6  |                                                               |      |
-| Sun | 6  |                                                               |      |
-| Mon | 2  | emergency fixes / minor improvements <br> submit before 14:45 |      |
+Assets are made by:
+* Mark Myskov ([itch](https://m-for-mediocre.itch.io/), [github](https://mformarker.github.io/markmyskov/index.html)): sounds and music
+* itsjustwoody ([itch](https://itsjustwoody.itch.io/)): all the graphics
 
-### Restrictions
-
-Graphics:
-* only 2D textures (but can make parallax to simulate)
-* custom spec-based sprite animations
-* can do shaders when really need (e.g. for rain)
+Tech used by me:
+* [littleKt](https://littlekt.com/) as the main game framework
+* an [old Box2D port](https://central.sonatype.com/namespace/com.soywiz.korlibs.kbox2d) from [KorGE](https://korge.org/)
+* [Tiled](https://www.mapeditor.org/) as the map editor
+* [GIMP](https://www.gimp.org/) to sketch, crop and re-export stuff
 
 ## Project is based on a Starter Game Template for the LittleKt Game Framework
 
