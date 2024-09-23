@@ -14,7 +14,6 @@ import io.itch.mattemade.utils.disposing.Self
 
 class BlackCatGame(
     context: Context,
-    private val isSafari: Boolean
 ) : ContextListener(context), Disposing by Self() {
 
     private val controller = context.bindInputs()
@@ -48,7 +47,7 @@ class BlackCatGame(
         var lastHeight = 0
 
         fun launchGame(ignoreFirstResize: Boolean) {
-            gameScene = GameScene(context, controller, font, smallerFont, isSafari, assets, ignoreFirstResize, ::handleAnimationSignal).apply {
+            gameScene = GameScene(context, controller, font, assets, ignoreFirstResize, ::handleAnimationSignal).apply {
                 resize(lastWidth, lastHeight)
             }
         }

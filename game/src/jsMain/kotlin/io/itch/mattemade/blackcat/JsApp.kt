@@ -2,6 +2,7 @@ package io.itch.mattemade.blackcat
 
 import com.lehaine.littlekt.Context
 import com.lehaine.littlekt.RemoveContextCallback
+import com.lehaine.littlekt.audio.AudioContext
 import com.lehaine.littlekt.createLittleKtApp
 import com.lehaine.littlekt.graphics.Color
 import kotlinx.browser.document
@@ -10,6 +11,9 @@ import org.w3c.dom.HTMLElement
 
 private const val CANVAS_ID = "littleKtGameCanvas"
 
+external fun applySafariAudioHack()
+external fun getOrCreateAudioListener(): AudioContext
+
 fun main() {
     createLittleKtApp {
         title = "Black Cat Game"
@@ -17,17 +21,11 @@ fun main() {
         canvasId = CANVAS_ID
     }.start { context ->
         scheduleCanvasResize(context)
-        BlackCatGame(
-            context,
-            isSafari
-        )
-    }
-}
+        applySafariAudioHack()
 
-private val isSafari: Boolean = window.navigator.let {
-    it.vendor.contains("Apple") &&
-            !it.userAgent.contains("CriOS") && // chrome
-            !it.userAgent.contains("FxiOS")    // firefox
+        BlackCatGame(context)
+
+    }
 }
 
 private fun scheduleCanvasResize(context: Context) {
